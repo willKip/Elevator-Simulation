@@ -1,13 +1,9 @@
 #include "mainwindow.h"
+
 #include "ui_mainwindow.h"
 
-// Elevator, Floor, Passenger numbers are defined here, can be changed.
-// (As per assignment scope, GUI will only accommodate 7 floors, 3 elevators, 3 passengers.)
-const int MainWindow::ELEVATOR_COUNT = 7;
-
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent), ui(new Ui::MainWindow)
-{
+    : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
 
     connect(ui->testButton, SIGNAL(released()), this, SLOT(testFunction()));
@@ -15,22 +11,29 @@ MainWindow::MainWindow(QWidget *parent)
     // TODO: Init elevators and floors here
     qInfo("int = " + ELEVATOR_COUNT);
 
-    // TODO: Update view (get updates from each elevator)
+    // Initialize number of loops since simulation start.
+    timeCount = 0;
+
+    // Update view
+    updateTimer = new QTimer(this);
+    connect(updateTimer, SIGNAL(timeout()), this, SLOT(updateUi()));
+    updateTimer->start(UPDATE_INTERVAL_MS);
 }
 
-MainWindow::~MainWindow()
-{
+MainWindow::~MainWindow() {
     delete ui;
+    delete updateTimer;
 }
 
-void MainWindow::testFunction()
-{
-    inlineConsoleDisplay("Hello world!");
+void MainWindow::updateUi() {
+    inlineConsoleDisplay(QString("Iteration [%1]").arg(timeCount));
+    timeCount += 1;  // TODO: shouldnt be in the "ui update function"
 }
+
+void MainWindow::testFunction() { inlineConsoleDisplay("Hello world!"); }
 
 // Display specified text to the inline console.
-void MainWindow::inlineConsoleDisplay(const QString &text)
-{
+void MainWindow::inlineConsoleDisplay(const QString &text) {
     // TODO: Display time before each output.
     QLabel *prevTextLabel = ui->textOutput;
     prevTextLabel->setText(QString(prevTextLabel->text() % "\n" % text));
