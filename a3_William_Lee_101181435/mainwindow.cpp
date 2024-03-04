@@ -9,10 +9,13 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    connect(ui->pushButton, SIGNAL(released()), this, SLOT(doSomething()));
+
+    connect(ui->testButton, SIGNAL(released()), this, SLOT(testFunction()));
 
     // TODO: Init elevators and floors here
-    qInfo("int = %d", ELEVATOR_COUNT);
+    qInfo("int = " + ELEVATOR_COUNT);
+
+    // TODO: Update view (get updates from each elevator)
 }
 
 MainWindow::~MainWindow()
@@ -20,7 +23,19 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::doSomething()
+void MainWindow::testFunction()
 {
-    qInfo("Hello world!");
+    inlineConsoleDisplay("Hello world!");
+}
+
+// Display specified text to the inline console.
+void MainWindow::inlineConsoleDisplay(const QString &text)
+{
+    // TODO: Display time before each output.
+    QLabel *prevTextLabel = ui->textOutput;
+    prevTextLabel->setText(QString(prevTextLabel->text() % "\n" % text));
+
+    // Scroll to the bottom of the inline terminal.
+    QScrollBar *sb = ui->outputScroll->verticalScrollBar();
+    sb->setValue(sb->maximum());
 }

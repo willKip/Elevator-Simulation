@@ -2,6 +2,9 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QScrollBar>
+#include <QStringBuilder>
+#include <QLabel>
 
 QT_BEGIN_NAMESPACE
 namespace Ui
@@ -23,6 +26,7 @@ private:
     static const int ELEVATOR_COUNT;
 
 private slots:
-    void doSomething();
+    void testFunction();
+    void inlineConsoleDisplay(const QString &text);
 };
 #endif // MAINWINDOW_H
