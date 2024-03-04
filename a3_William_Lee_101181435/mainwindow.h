@@ -20,6 +20,7 @@ public:
 
 private:
     Ui::MainWindow *ui;
+    static const int ELEVATOR_COUNT;
 
 private slots:
     void doSomething();
