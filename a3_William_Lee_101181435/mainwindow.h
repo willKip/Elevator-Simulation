@@ -34,6 +34,8 @@ class MainWindow : public QMainWindow {
     int timeCount;
     QTimer *updateTimer;
 
+    bool buttonPressed;
+
    private slots:
     void updateUi();
     void testFunction();

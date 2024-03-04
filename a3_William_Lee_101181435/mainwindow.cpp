@@ -18,6 +18,8 @@ MainWindow::MainWindow(QWidget *parent)
     updateTimer = new QTimer(this);
     connect(updateTimer, SIGNAL(timeout()), this, SLOT(updateUi()));
     updateTimer->start(UPDATE_INTERVAL_MS);
+
+    buttonPressed = false;
 }
 
 MainWindow::~MainWindow() {
@@ -27,10 +29,21 @@ MainWindow::~MainWindow() {
 
 void MainWindow::updateUi() {
     inlineConsoleDisplay(QString("Iteration [%1]").arg(timeCount));
+
+    if (buttonPressed) {
+        inlineConsoleDisplay("Button was pressed this iteration.");
+        buttonPressed = false;
+    } else {
+        inlineConsoleDisplay("NOT pressed.");
+    }
+
     timeCount += 1;  // TODO: shouldnt be in the "ui update function"
 }
 
-void MainWindow::testFunction() { inlineConsoleDisplay("Hello world!"); }
+void MainWindow::testFunction() {
+    buttonPressed = true;
+    inlineConsoleDisplay("Button pressed!");
+}
 
 // Display specified text to the inline console.
 void MainWindow::inlineConsoleDisplay(const QString &text) {
