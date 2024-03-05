@@ -14,12 +14,24 @@ MainWindow::MainWindow(QWidget *parent)
     // Initialize number of loops since simulation start.
     timeCount = 0;
 
+    building = new Building(FLOOR_COUNT, ELEVATOR_COUNT);
+
+    // Initialize elevator view in UI
+    buildingView = ui->buildingView;
+    buildingView->setModel(building);
+    buildingView->horizontalHeader()->setSectionResizeMode(
+        QHeaderView::Stretch);
+    buildingView->verticalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+
+    // buildingView->resizeColumnsToContents();
+    // buildingView->resizeRowsToContents();
+
+    buttonPressed = false;
+
     // Update view
     updateTimer = new QTimer(this);
     connect(updateTimer, SIGNAL(timeout()), this, SLOT(updateUi()));
     updateTimer->start(UPDATE_INTERVAL_MS);
-
-    buttonPressed = false;
 }
 
 MainWindow::~MainWindow() {

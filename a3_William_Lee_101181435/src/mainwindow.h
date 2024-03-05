@@ -1,11 +1,15 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <QHeaderView>
 #include <QLabel>
 #include <QMainWindow>
 #include <QScrollBar>
 #include <QStringBuilder>
+#include <QTableView>
 #include <QTimer>
+
+#include "Building.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -27,14 +31,18 @@ class MainWindow : public QMainWindow {
     // Elevator, Floor, Passenger numbers are defined here, can be changed.
     // (As per assignment scope, GUI will only accommodate 7 floors, 3
     // elevators, 3 passengers.)
-    static const int ELEVATOR_COUNT = 7;
+    static const int FLOOR_COUNT = 7;
+    static const int ELEVATOR_COUNT = 3;
     // Length of each time chunk in the simulation, in milliseconds.
     static const int UPDATE_INTERVAL_MS = 1000;
 
     int timeCount;
     QTimer *updateTimer;
 
-    bool buttonPressed;
+    bool buttonPressed;  // TODO: temp
+
+    Building *building;
+    QTableView *buildingView;
 
    private slots:
     void updateUi();
