@@ -17,9 +17,9 @@
    <widget class="QPushButton" name="testButton">
     <property name="geometry">
      <rect>
-      <x>630</x>
-      <y>340</y>
-      <width>141</width>
+      <x>570</x>
+      <y>350</y>
+      <width>221</width>
       <height>81</height>
      </rect>
     </property>
@@ -30,9 +30,9 @@
    <widget class="QScrollArea" name="outputScroll">
     <property name="geometry">
      <rect>
-      <x>590</x>
-      <y>0</y>
-      <width>201</width>
+      <x>570</x>
+      <y>10</y>
+      <width>221</width>
       <height>331</height>
      </rect>
     </property>
@@ -44,7 +44,7 @@
       <rect>
        <x>0</x>
        <y>0</y>
-       <width>199</width>
+       <width>219</width>
        <height>329</height>
       </rect>
      </property>
