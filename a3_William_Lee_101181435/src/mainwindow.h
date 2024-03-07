@@ -29,8 +29,8 @@ class MainWindow : public QMainWindow {
 
     // PROGRAM CONSTANTS
     // Elevator, Floor, Passenger numbers are defined here, can be changed.
-    // (As per assignment scope, GUI will only accommodate 7 floors, 3
-    // elevators, 3 passengers.)
+    // (As per assignment scope, GUI is only designed to accommodate 7 floors
+    // and 3 elevators).)
     static const int FLOOR_COUNT = 7;
     static const int ELEVATOR_COUNT = 3;
     // Length of each time chunk in the simulation, in milliseconds.

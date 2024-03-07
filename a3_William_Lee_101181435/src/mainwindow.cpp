@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 
+#include "Building.h"
 #include "ui_mainwindow.h"
 
 MainWindow::MainWindow(QWidget *parent)
@@ -9,22 +10,18 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->testButton, SIGNAL(released()), this, SLOT(testFunction()));
 
     // TODO: Init elevators and floors here
-    qInfo("int = " + ELEVATOR_COUNT);
 
     // Initialize number of loops since simulation start.
     timeCount = 0;
 
     building = new Building(FLOOR_COUNT, ELEVATOR_COUNT);
 
-    // Initialize elevator view in UI
+    // Initialize elevator view in UI (make rows and columns stretch to parent)
     buildingView = ui->buildingView;
     buildingView->setModel(building);
     buildingView->horizontalHeader()->setSectionResizeMode(
         QHeaderView::Stretch);
     buildingView->verticalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-
-    // buildingView->resizeColumnsToContents();
-    // buildingView->resizeRowsToContents();
 
     buttonPressed = false;
 
