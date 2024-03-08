@@ -2,8 +2,9 @@
 #define ELEVATOR_H
 
 #include <QObject>
-#include <unordered_map>
+#include <QQueue>
 #include <QStateMachine>
+#include <QString>
 
 /**
  * Store and compute elevator movement and state.
@@ -14,31 +15,58 @@
 class Elevator : public QObject {
     Q_OBJECT
    public:
-    Elevator(int carId, int floorCount, QObject *parent = nullptr);
+    Elevator(int carId, int initialFloor, QObject *parent = nullptr);
 
+    enum class Direction { UP, DOWN };
     enum class MovementState { STOPPED, UPWARDS, DOWNWARDS };
     enum class DoorState { CLOSED, CLOSING, OPENING, OPEN };
-    enum class EmergencyState { FIRE, POWER_OUT, OVERLOAD, DOOR_STUCK, HELP };
+    enum class EmergencyState {
+        NONE,
+        FIRE,
+        POWER_OUT,
+        OVERLOAD,
+        DOOR_STUCK,
+        HELP
+    };
 
-    int readDoorSensor();
+    // int readDoorSensor();
+
+    // Getters
+    int getCarId() const;
+    int getCurrentFloor() const;
+
+    // Setters
+    void setCurrentFloor(int f);
+
+    // Return a string representing the elevator's status.
+    QString getElevatorString() const;
+
+   signals:
+    void elevatorMoving(Direction);
 
    private:
-    /**
-     * Map of floor numbers to booleans. Value of true means the floor needs to
-     * be visited by the elevator (during normal operation).
-     * Nonexistent accesses default to false, so no initialization required.
-     */
-    std::unordered_map<int, bool> queuedFloors;
+    const int carId;
+    // Ordered FIFO queue of floors that must be visited.
+    QQueue<int> queuedFloors;
     MovementState currentMovement;
     DoorState doorState;
+    EmergencyState emergencyState;
+
+    int currentFloor;
+
+    // todo: current text message and audio
 
     // todo: determine next action
     // If current floor has queue, stop and open for it.
     //
     // todo: door opening should take 2 intervals
 
+    // fn: query for floors that need an elevator. (remove if they no longer
+    // need.)
+
     // signals:
     // Notify building that elevator moving.
+    // retrieve current building status.
     // slots:
     // Receive from floor sensor current floor.
 };

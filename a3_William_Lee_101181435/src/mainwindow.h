@@ -4,10 +4,12 @@
 #include <QHeaderView>
 #include <QLabel>
 #include <QMainWindow>
+#include <QPushButton>
 #include <QScrollBar>
 #include <QStringBuilder>
 #include <QTableView>
 #include <QTimer>
+#include <QVBoxLayout>
 
 #include "Building.h"
 
@@ -41,8 +43,15 @@ class MainWindow : public QMainWindow {
 
     bool buttonPressed;  // TODO: temp
 
-    Building *building;
+    Building *buildingModel;
     QTableView *buildingView;
+
+   signals:
+    void testSig(Elevator::Direction);  // todo: temp
+
+   public slots:
+    void testSlot();        // todo: temp
+    void doSomething(int);  // todo: temp
 
    private slots:
     void updateUi();
