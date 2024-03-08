@@ -69,9 +69,9 @@ MainWindow::MainWindow(QWidget *parent)
             down->setDisabled(true);
         }
 
-        connect(up, &FloorButton::clicked, buildingModel,
+        connect(up, &FloorButton::pressed, buildingModel,
                 &Building::updateFloorRequests);
-        connect(down, &FloorButton::clicked, buildingModel,
+        connect(down, &FloorButton::pressed, buildingModel,
                 &Building::updateFloorRequests);
 
         floorButtonLayout->addWidget(up);
@@ -79,10 +79,6 @@ MainWindow::MainWindow(QWidget *parent)
 
         ui->buildingView->setIndexWidget(
             buildingModel->index(f, ELEVATOR_COUNT), floorButtonContainer);
-
-        // signalMapper->setMapping(cartButton, i);
-        // connect(cartButton, SIGNAL(clicked(bool)), signalMapper,
-        // SLOT(map()));
     }
 
     buttonPressed = false;
