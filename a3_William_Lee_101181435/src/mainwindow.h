@@ -47,7 +47,7 @@ class MainWindow : public QMainWindow {
     QTableView *buildingView;
 
    signals:
-    void testSig(Elevator::Direction);  // todo: temp
+    void testSig(Direction);  // todo: temp
 
    public slots:
     void testSlot();        // todo: temp

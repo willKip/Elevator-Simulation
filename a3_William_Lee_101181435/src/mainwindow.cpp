@@ -10,6 +10,7 @@
 #include <QVBoxLayout>
 
 #include "Building.h"
+#include "FloorButton.h"
 #include "ui_mainwindow.h"
 
 MainWindow::MainWindow(QWidget *parent)
@@ -34,42 +35,30 @@ MainWindow::MainWindow(QWidget *parent)
         QHeaderView::Stretch);
     buildingView->verticalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 
-    // Style buttons in building view
-    buildingView->setStyleSheet(
-        "QPushButton::checked {"
-        "background-color: rgba(225, 0, 0, 60%);"
-        "}");
-
     /**
      * Initialize and add buttons for each floor in the building UI.
      */
     QWidget *floorButtonContainer;
     QVBoxLayout *floorButtonLayout;
-    QPushButton *up, *down;
+    FloorButton *up, *down;
+    int floorNum;
+
     for (int f = 0; f < FLOOR_COUNT; f++) {
+        floorNum = buildingModel->index_to_floorNum(f);
+
         // Container widget
         floorButtonContainer = new QWidget;
 
-        // Layout set on the container
+        // Set layout on the container
         floorButtonLayout = new QVBoxLayout(floorButtonContainer);
         floorButtonLayout->setSpacing(0);
         floorButtonLayout->setContentsMargins(0, 0, 0, 0);
 
-        // Initialize up button
-        up = new QPushButton(this);
-        up->setText("UP ▲");
-        up->setCheckable(true);
-        up->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        up->setObjectName(QString("floor%1UpButton")
-                              .arg(buildingModel->index_to_floorNum(f)));
-
-        // Initialize down button
-        down = new QPushButton(this);
-        down->setText("DOWN ▼");
-        down->setCheckable(true);
-        down->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        down->setObjectName(QString("floor%1DownButton")
-                                .arg(buildingModel->index_to_floorNum(f)));
+        // Initialize buttons
+        up = new FloorButton(floorNum, Direction::UP, false,
+                             QString("floor%1UpButton").arg(floorNum));
+        down = new FloorButton(floorNum, Direction::DOWN, false,
+                               QString("floor%1DownButton").arg(floorNum));
 
         // Disable non-applicable floor buttons
         if (f == 0) {
@@ -79,6 +68,11 @@ MainWindow::MainWindow(QWidget *parent)
             // Bottom floor
             down->setDisabled(true);
         }
+
+        connect(up, &FloorButton::clicked, buildingModel,
+                &Building::updateFloorRequests);
+        connect(down, &FloorButton::clicked, buildingModel,
+                &Building::updateFloorRequests);
 
         floorButtonLayout->addWidget(up);
         floorButtonLayout->addWidget(down);
@@ -91,61 +85,6 @@ MainWindow::MainWindow(QWidget *parent)
         // SLOT(map()));
     }
 
-    // QPushButton *up = new QPushButton(this);
-    // up->setCheckable(true);
-    // up->setText("UP");
-    // up->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    // QPushButton *down = new QPushButton(this);
-    // down->setCheckable(true);
-    // down->setText("DOWN");
-    // down->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    // floorButtonLayout->addWidget(up);
-    // floorButtonLayout->addWidget(down);
-    // ui->buildingView->setIndexWidget(buildingModel->index(0, 3),
-    //                                  floorButtonContainer);
-
-    // QSignalMapper *signalMapper = new QSignalMapper(this);
-    // QWidget *floorButtonContainer;
-    // QVBoxLayout *floorButtonLayout;
-    // QCheckBox *up, *down;
-    // for (int i = 0; i < ELEVATOR_COUNT; i++) {
-    //     floorButtonContainer = new QWidget;
-    //     floorButtonLayout = new QVBoxLayout(floorButtonContainer);
-
-    //     auto item = buildingModel->index(i, ELEVATOR_COUNT + 1);
-    //     up = new QCheckBox("Up");
-    //     down = new QCheckBox("Down");
-    //     up->setObjectName(QString("floor%1UpButton").arg(i + 1));
-    //     down->setObjectName(QString("floor%1DownButton").arg(i + 1));
-
-    //     floorButtonLayout->addWidget(up);
-    //     floorButtonLayout->addWidget(down);
-
-    //     ui->buildingView->setIndexWidget(item, floorButtonContainer);
-
-    //     // signalMapper->setMapping(cartButton, i);
-    //     // connect(cartButton, SIGNAL(clicked(bool)), signalMapper,
-    //     // SLOT(map()));
-    // }
-    // connect(signalMapper, SIGNAL(mapped(int)), this, SLOT(doSomething(int)));
-
-    // QWidget *floorButtonContainer = new QWidget;
-    // QVBoxLayout *floorButtonLayout = new QVBoxLayout(floorButtonContainer);
-    // floorButtonLayout->setAlignment(Qt::AlignBottom);
-
-    // QCheckBox *up, *down;
-    // for (int i = 0; i < FLOOR_COUNT; i++) {
-    //     up = new QCheckBox("Up");
-    //     down = new QCheckBox("Down");
-    //     up->setObjectName(QString("floor%1UpButton").arg(i + 1));
-    //     down->setObjectName(QString("floor%1DownButton").arg(i + 1));
-
-    //     floorButtonLayout->addWidget(up);
-    //     floorButtonLayout->addWidget(down);
-    // }
-
-    // ui->horizontalLayout_2->addWidget(floorButtonContainer);
-
     buttonPressed = false;
 
     // Update view
@@ -153,15 +92,15 @@ MainWindow::MainWindow(QWidget *parent)
     connect(updateTimer, SIGNAL(timeout()), this, SLOT(updateUi()));
     updateTimer->start(UPDATE_INTERVAL_MS);
 
-    // todo: temp
-    Elevator *e = buildingModel->buildingTable[6][0];
-    connect(ui->testButton, SIGNAL(released()), this, SLOT(testSlot()));
-    connect(this, &MainWindow::testSig, e, &Elevator::elevatorMoving);
+    // // todo: temp
+    // Elevator *e = buildingModel->buildingTable[6][0];
+    // connect(ui->testButton, SIGNAL(released()), this, SLOT(testSlot()));
+    // connect(this, &MainWindow::testSig, e, &Elevator::elevatorMoving);
 }
 
-void MainWindow::doSomething(int i) { emit testSig(Elevator::Direction::UP); }
+void MainWindow::doSomething(int i) { emit testSig(Direction::UP); }
 
-void MainWindow::testSlot() { emit testSig(Elevator::Direction::UP); }
+void MainWindow::testSlot() { emit testSig(Direction::UP); }
 
 MainWindow::~MainWindow() {
     delete ui;

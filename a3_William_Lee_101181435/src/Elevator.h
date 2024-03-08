@@ -6,6 +6,8 @@
 #include <QStateMachine>
 #include <QString>
 
+#include "Direction.h"
+
 /**
  * Store and compute elevator movement and state.
  * Member variables:
@@ -17,7 +19,6 @@ class Elevator : public QObject {
    public:
     Elevator(int carId, int initialFloor, QObject *parent = nullptr);
 
-    enum class Direction { UP, DOWN };
     enum class MovementState { STOPPED, UPWARDS, DOWNWARDS };
     enum class DoorState { CLOSED, CLOSING, OPENING, OPEN };
     enum class EmergencyState {
@@ -42,11 +43,11 @@ class Elevator : public QObject {
     QString getElevatorString() const;
 
    signals:
-    void elevatorMoving(Direction);
+    void elevatorMoving(Direction d);
 
    private:
     const int carId;
-    // Ordered FIFO queue of floors that must be visited.
+    // Ordered FIFO queue of floors selected on the floor panel.
     QQueue<int> queuedFloors;
     MovementState currentMovement;
     DoorState doorState;

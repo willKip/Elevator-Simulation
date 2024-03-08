@@ -2,8 +2,12 @@
 
 #include <QAbstractTableModel>
 #include <QMultiHash>
+#include <QRandomGenerator>
 #include <QtGlobal>
 #include <vector>
+
+#include "Direction.h"
+#include "FloorButton.h"
 
 Building::Building(int f, int e, int ar, int ac, QObject *parent)
     : QAbstractTableModel(parent),
@@ -13,22 +17,28 @@ Building::Building(int f, int e, int ar, int ac, QObject *parent)
       add_cols(ac),
       buildingTable(std::vector<std::vector<Elevator *>>(
           floor_count, std::vector<Elevator *>(elevator_count, nullptr))) {
+    /**
+     * Initialize building table
+     */
     Elevator *newElevator;
-
-    // Initialize building table
+    int initFloorNum;
     for (int elevatorIndex = 0; elevatorIndex < elevator_count;
          elevatorIndex++) {
-        // TODO: initial floor randomize?
-        int initFloor = 1;
-        newElevator = new Elevator(index_to_carId(elevatorIndex), initFloor);
-        buildingTable[index_to_floorNum(initFloor, true)][elevatorIndex] =
+        // Initialize each elevator on a random floor.
+        initFloorNum = index_to_floorNum(
+            QRandomGenerator::global()->bounded(0, floor_count));
+
+        newElevator = new Elevator(index_to_carId(elevatorIndex), initFloorNum);
+
+        buildingTable[index_to_floorNum(initFloorNum, true)][elevatorIndex] =
             newElevator;
+
         connect(newElevator, &Elevator::elevatorMoving, this,
                 &Building::moveElevator);
     }
 }
 
-void Building::moveElevator(Elevator::Direction direction) {
+void Building::moveElevator(Direction direction) {
     Elevator *elevator = qobject_cast<Elevator *>(sender());
 
     int carId = elevator->getCarId();
@@ -36,10 +46,10 @@ void Building::moveElevator(Elevator::Direction direction) {
     int newFloor;
 
     switch (direction) {
-        case Elevator::Direction::UP:
+        case Direction::UP:
             newFloor = currentFloor + 1;
             break;
-        case Elevator::Direction::DOWN:
+        case Direction::DOWN:
             newFloor = currentFloor - 1;
             break;
     }
@@ -48,7 +58,7 @@ void Building::moveElevator(Elevator::Direction direction) {
         placeElevator(carId, newFloor);
     } catch (...) {
         // This would indicate a flaw in elevator logic, it should be smart
-        // enough to prevent such movement.
+        // enough to not attempt invalid movement.
         throw "Error: Elevator attempted invalid movement!";
     }
 }
@@ -132,10 +142,27 @@ QVariant Building::data(const QModelIndex &index, int role) const {
     return QVariant();
 }
 
+void Building::updateFloorRequests() {
+    // Slot: When floor button is pressed, toggle its corresponding entry in the
+    // floor requests data structure and update the button.
+    FloorButton *fb = qobject_cast<FloorButton *>(sender());
+    Direction fb_dir = fb->getDirection();
+    int fb_floorNum = fb->getFloorNum();
+
+    bool inFloorRequests = floorRequests.contains(fb_dir, fb_floorNum);
+
+    if (inFloorRequests) {
+        floorRequests.remove(fb_dir, fb_floorNum);
+    } else {
+        floorRequests.insert(fb_dir, fb_floorNum);
+    }
+
+    fb->setChecked(!inFloorRequests);
+}
+
 QVariant Building::headerData(int section, Qt::Orientation orientation,
                               int role) const {
     if (role == Qt::DisplayRole) {
-        // TODO: make dynamic based on its elements.
         switch (orientation) {
             case Qt::Horizontal:
                 if (section < elevator_count)

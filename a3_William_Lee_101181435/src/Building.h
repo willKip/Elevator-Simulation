@@ -8,6 +8,7 @@
 #include <QMultiHash>
 #include <vector>
 
+#include "Direction.h"
 #include "Elevator.h"
 
 /**
@@ -41,6 +42,7 @@ class Building : public QAbstractTableModel {
     const int elevator_count;  // Columns
     const int add_rows;
     const int add_cols;
+
     std::vector<std::vector<Elevator *>> buildingTable;
 
     /**
@@ -51,9 +53,12 @@ class Building : public QAbstractTableModel {
     // Return car ID from index. Do the inverse if the flag is set.
     int index_to_carId(int x, bool inverse = false) const;
 
+   public slots:
+    void updateFloorRequests();
+
    private slots:
     // Move elevator one floor in the specified direction.
-    void moveElevator(Elevator::Direction);
+    void moveElevator(Direction);
 
    private:
     /**
@@ -66,8 +71,9 @@ class Building : public QAbstractTableModel {
     /**
      * Map of floor numbers to currently pressed buttons.
      * A floor can have multiple buttons pressed (up/down).
+     * todo: swapped
      */
-    QMultiHash<int, std::vector<Elevator::Direction>> floorRequests;
+    QMultiHash<Direction, int> floorRequests;
 
     /**
      * Set the elevator of the given ID to the given floor.
