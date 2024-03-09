@@ -6,6 +6,7 @@
 #include <QDebug>
 #include <QFont>
 #include <QMultiHash>
+#include <QMutex>
 #include <QVector>
 
 #include "Direction.h"
@@ -13,7 +14,10 @@
 
 /**
  * Class simulating a building with elevators.
+ * In charge of storing and altering elevator locations and floor button states
+ * according to requests.
  * Extends QAbstractTableModel, serving the role of Model in the MVC paradigm.
+ *
  * Member variables:
  * - floor_count        Number of floors in the building.
  * - elevator_count     Number of elevators in the building.
@@ -49,13 +53,16 @@ class Building : public QAbstractTableModel {
     int index_to_carId(int x, bool inverse = false) const;
 
    public slots:
+    // Reflect floor button state changes on data
     void updateFloorRequests();
 
    private slots:
     // Move elevator one floor in the specified direction.
-    void moveElevator(Direction);
+    void moveElevator(int carId, Elevator::MovementState elevatorDirection);
 
    private:
+    QMutex mutex;
+
     const int floor_count;     // Each floor gets a row
     const int elevator_count;  // Each elevator gets a column
 

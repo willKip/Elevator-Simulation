@@ -3,10 +3,12 @@
 #include <QAbstractTableModel>
 #include <QMultiHash>
 #include <QRandomGenerator>
+#include <QTimer>
 #include <QVector>
 #include <QtGlobal>
 
 #include "Direction.h"
+#include "Elevator.h"
 #include "FloorButton.h"
 
 Building::Building(int f, int e, int ar, int ac, QObject *parent)
@@ -22,37 +24,56 @@ Building::Building(int f, int e, int ar, int ac, QObject *parent)
      */
     Elevator *newElevator;
     int initFloorNum;
+
     for (int elevatorIndex = 0; elevatorIndex < elevator_count;
          elevatorIndex++) {
         // Initialize each elevator on a random floor.
         initFloorNum = index_to_floorNum(
             QRandomGenerator::global()->bounded(0, floor_count));
 
-        newElevator = new Elevator(index_to_carId(elevatorIndex), initFloorNum);
+        newElevator =
+            new Elevator(index_to_carId(elevatorIndex), initFloorNum, this);
 
         buildingTable[index_to_floorNum(initFloorNum, true)][elevatorIndex] =
             newElevator;
 
-        connect(newElevator, &Elevator::elevatorMoving, this,
+        connect(newElevator, &Elevator::movingStateSig, this,
                 &Building::moveElevator);
+        connect(this, &QAbstractItemModel::dataChanged, newElevator,
+                &Elevator::updateBuildingData);
     }
+
+    // for (int eInd = 0; eInd < elevator_count, eInd++) {
+
+    // }
+
+    // // TODO: Move declarations to header
+    // QTimer *moveTimer = new QTimer(this);
+
+    // moveTimer->connect(moveTimer, &QTimer::timeout, this, &MainWindow::Test);
+    // moveTimer->start(2000);
 }
 
-void Building::moveElevator(Direction direction) {
-    Elevator *elevator = qobject_cast<Elevator *>(sender());
+// TODO: Instantiate elevator loop for each
 
-    int carId = elevator->getCarId();
+void Building::moveElevator(int carId,
+                            Elevator::MovementState elevatorDirection) {
     int currentFloor = getElevatorFloor(carId);
     int newFloor;
 
-    switch (direction) {
-        case Direction::UP:
+    switch (elevatorDirection) {
+        case Elevator::MovementState::UPWARDS:
             newFloor = currentFloor + 1;
             break;
-        case Direction::DOWN:
+        case Elevator::MovementState::DOWNWARDS:
             newFloor = currentFloor - 1;
             break;
+        case Elevator::MovementState::STOPPED:
+            newFloor = currentFloor;
+            break;
     }
+
+    // Delay before elevator completes movement
 
     try {
         placeElevator(carId, newFloor);
@@ -65,20 +86,23 @@ void Building::moveElevator(Direction direction) {
 
 int Building::placeElevator(int carId, int newFloorNum) {
     int prevFloorNum = getElevatorFloor(carId);
-    int prevFloorRow = index_to_floorNum(prevFloorNum, true);
-    int elevatorColumn = index_to_carId(carId, true);
 
-    // Null the previous location's pointer and move the elevator's pointer to
-    // the new floor.
-    Elevator *e = buildingTable[prevFloorRow][elevatorColumn];
-    buildingTable[prevFloorRow][elevatorColumn] = nullptr;
-    buildingTable[index_to_floorNum(newFloorNum, true)][elevatorColumn] = e;
+    if (prevFloorNum != newFloorNum) {
+        int prevFloorRow = index_to_floorNum(prevFloorNum, true);
+        int elevatorColumn = index_to_carId(carId, true);
 
-    e->setCurrentFloor(newFloorNum);
+        // Null the previous location's pointer and move the elevator's pointer
+        // to the new floor.
+        Elevator *e = buildingTable[prevFloorRow][elevatorColumn];
+        buildingTable[prevFloorRow][elevatorColumn] = nullptr;
+        buildingTable[index_to_floorNum(newFloorNum, true)][elevatorColumn] = e;
 
-    // Inform view to update the moved elevator's column
-    emit dataChanged(index(0, elevatorColumn),
-                     index(floor_count, elevatorColumn));
+        e->setCurrentFloor(newFloorNum);
+
+        // Inform view to update the moved elevator's column
+        emit dataChanged(index(0, elevatorColumn),
+                         index(floor_count, elevatorColumn));
+    }
 
     return prevFloorNum;
 }
@@ -145,6 +169,10 @@ QVariant Building::data(const QModelIndex &index, int role) const {
 void Building::updateFloorRequests() {
     // Slot: When floor button is pressed, toggle its corresponding entry in the
     // floor requests data structure and update the button.
+
+    // Prevent user interaction and elevator arrival from conflicting
+    mutex.lock();
+
     FloorButton *fb = qobject_cast<FloorButton *>(sender());
     Direction fb_dir = fb->getDirection();
     int fb_floorNum = fb->getFloorNum();
@@ -156,8 +184,9 @@ void Building::updateFloorRequests() {
     } else {
         floorRequests.insert(fb_dir, fb_floorNum);
     }
-
     fb->setChecked(!inFloorRequests);
+
+    mutex.unlock();
 }
 
 QVariant Building::headerData(int section, Qt::Orientation orientation,

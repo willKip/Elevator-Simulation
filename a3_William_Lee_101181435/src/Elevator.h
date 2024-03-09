@@ -1,8 +1,12 @@
 #ifndef ELEVATOR_H
 #define ELEVATOR_H
 
+#include <QMessageBox>
+#include <QMutex>
 #include <QObject>
 #include <QQueue>
+#include <QSignalTransition>
+#include <QState>
 #include <QStateMachine>
 #include <QString>
 
@@ -10,6 +14,7 @@
 
 /**
  * Store and compute elevator movement and state.
+ * They exist as part of Building classes.
  * Member variables:
  * - carId      Unique identifying ID of elevator within the building.
  * -
@@ -17,8 +22,6 @@
 class Elevator : public QObject {
     Q_OBJECT
    public:
-    Elevator(int carId, int initialFloor, QObject *parent = nullptr);
-
     enum class MovementState { STOPPED, UPWARDS, DOWNWARDS };
     enum class DoorState { CLOSED, CLOSING, OPENING, OPEN };
     enum class EmergencyState {
@@ -30,7 +33,9 @@ class Elevator : public QObject {
         HELP
     };
 
-    // int readDoorSensor();
+    Elevator(int carId, int initialFloor, QObject *parent = nullptr);
+
+    // int readDoorSensor(); // TODO
 
     // Getters
     int getCarId() const;
@@ -43,17 +48,25 @@ class Elevator : public QObject {
     QString getElevatorString() const;
 
    signals:
-    void elevatorMoving(Direction d);
+    void movingStateSig(int carId, Elevator::MovementState);
+
+   public slots:
+    void updateBuildingData();
+    void determineMovement();
 
    private:
     const int carId;
     // Ordered FIFO queue of floors selected on the floor panel.
-    QQueue<int> queuedFloors;
+    QQueue<int> pressedFloors;
+
     MovementState currentMovement;
     DoorState doorState;
     EmergencyState emergencyState;
 
+    // Current floor number
     int currentFloor;
+
+    void Elevator::emitMovingStateSig();
 
     // todo: current text message and audio
 
