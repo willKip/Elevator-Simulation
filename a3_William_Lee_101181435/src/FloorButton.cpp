@@ -9,7 +9,8 @@
 
 // Static definitions
 const QString FloorButton::checkedStyleSheetStr =
-    "background-color: rgba(225, 0, 0, 60%);";
+    "background-color: rgba(10, 0, 135, 60%);"
+    "color: rgb(255,255,255);";
 const QString FloorButton::unCheckedStyleSheetStr = "";
 
 FloorButton::FloorButton(int f, Direction d, bool c, QString objectName,

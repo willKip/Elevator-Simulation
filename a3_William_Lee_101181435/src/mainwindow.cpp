@@ -87,16 +87,7 @@ MainWindow::MainWindow(QWidget *parent)
     updateTimer = new QTimer(this);
     connect(updateTimer, SIGNAL(timeout()), this, SLOT(updateUi()));
     updateTimer->start(UPDATE_INTERVAL_MS);
-
-    // // todo: temp
-    // Elevator *e = buildingModel->buildingTable[6][0];
-    // connect(ui->testButton, SIGNAL(released()), this, SLOT(testSlot()));
-    // connect(this, &MainWindow::testSig, e, &Elevator::elevatorMoving);
 }
-
-void MainWindow::doSomething(int i) { emit testSig(Direction::UP); }
-
-void MainWindow::testSlot() { emit testSig(Direction::UP); }
 
 MainWindow::~MainWindow() {
     delete ui;

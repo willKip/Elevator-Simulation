@@ -13,8 +13,8 @@
  * fires a signal to the underlying data structure and reflects the appropriate
  * state. For this, it ignores the default "checked" state of QPushButton and
  * implements its own.
- * todo
  */
+// TODO: documentation
 class FloorButton : public QPushButton {
     Q_OBJECT
 

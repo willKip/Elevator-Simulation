@@ -46,13 +46,6 @@ class MainWindow : public QMainWindow {
     Building *buildingModel;
     QTableView *buildingView;
 
-   signals:
-    void testSig(Direction);  // todo: temp
-
-   public slots:
-    void testSlot();        // todo: temp
-    void doSomething(int);  // todo: temp
-
    private slots:
     void updateUi();
     void testFunction();

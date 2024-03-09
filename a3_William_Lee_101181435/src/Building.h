@@ -36,15 +36,6 @@ class Building : public QAbstractTableModel {
                   int role = Qt::DisplayRole) const override;
     QVariant headerData(int section, Qt::Orientation, int role) const override;
 
-    // Additional non-data rows and columns can be allocated for buttons.
-    // todo: move back
-    const int floor_count;     // Rows
-    const int elevator_count;  // Columns
-    const int add_rows;
-    const int add_cols;
-
-    std::vector<std::vector<Elevator *>> buildingTable;
-
     /**
      * Helpers for accessing the 0-indexed table with floor numbers and car IDs.
      */
@@ -61,12 +52,18 @@ class Building : public QAbstractTableModel {
     void moveElevator(Direction);
 
    private:
+    const int floor_count;     // Each floor gets a row
+    const int elevator_count;  // Each elevator gets a column
+    // Additional non-data rows and columns can be allocated for buttons.
+    const int add_rows;
+    const int add_cols;
+
     /**
      * 2D array (matrix) representing the building's elevator positions.
      * Floors are rows, elevators are columns. Matrix stores pointers to
      * elevators.
      */
-    // std::vector<std::vector<Elevator *>> buildingTable;
+    std::vector<std::vector<Elevator *>> buildingTable;
 
     /**
      * Map of floor numbers to currently pressed buttons.
