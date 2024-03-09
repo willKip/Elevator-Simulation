@@ -84,9 +84,9 @@ MainWindow::MainWindow(QWidget *parent)
     buttonPressed = false;
 
     // Update view
-    updateTimer = new QTimer(this);
-    connect(updateTimer, SIGNAL(timeout()), this, SLOT(updateUi()));
-    updateTimer->start(UPDATE_INTERVAL_MS);
+    // updateTimer = new QTimer(this);
+    // connect(updateTimer, SIGNAL(timeout()), this, SLOT(updateUi()));
+    // updateTimer->start(UPDATE_INTERVAL_MS);
 }
 
 MainWindow::~MainWindow() {
