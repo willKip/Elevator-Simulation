@@ -104,7 +104,7 @@ void MainWindow::updateUi() {
         inlineConsoleDisplay("NOT pressed.");
     }
 
-    timeCount += 1;  // TODO: shouldnt be in the "ui update function"
+    timeCount += 1;  // TODO: shouldn't be in the "ui update function"
 }
 
 void MainWindow::testFunction() {
