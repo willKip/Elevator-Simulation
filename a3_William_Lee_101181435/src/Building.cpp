@@ -3,8 +3,8 @@
 #include <QAbstractTableModel>
 #include <QMultiHash>
 #include <QRandomGenerator>
+#include <QVector>
 #include <QtGlobal>
-#include <vector>
 
 #include "Direction.h"
 #include "FloorButton.h"
@@ -15,8 +15,8 @@ Building::Building(int f, int e, int ar, int ac, QObject *parent)
       elevator_count(e),
       add_rows(ar),
       add_cols(ac),
-      buildingTable(std::vector<std::vector<Elevator *>>(
-          floor_count, std::vector<Elevator *>(elevator_count, nullptr))) {
+      buildingTable(building_table_t(
+          floor_count, building_column_t(elevator_count, nullptr))) {
     /**
      * Initialize building table
      */

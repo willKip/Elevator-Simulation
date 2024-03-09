@@ -6,7 +6,7 @@
 #include <QDebug>
 #include <QFont>
 #include <QMultiHash>
-#include <vector>
+#include <QVector>
 
 #include "Direction.h"
 #include "Elevator.h"
@@ -23,7 +23,11 @@
  */
 class Building : public QAbstractTableModel {
     Q_OBJECT
+
    public:
+    using building_column_t = QVector<Elevator *>;
+    using building_table_t = QVector<building_column_t>;
+
     enum class EmergencyState { FIRE, POWER_OUT };
 
     Building(int floor_count, int elevator_count, int add_rows = 0,
@@ -54,6 +58,7 @@ class Building : public QAbstractTableModel {
    private:
     const int floor_count;     // Each floor gets a row
     const int elevator_count;  // Each elevator gets a column
+
     // Additional non-data rows and columns can be allocated for buttons.
     const int add_rows;
     const int add_cols;
@@ -63,12 +68,11 @@ class Building : public QAbstractTableModel {
      * Floors are rows, elevators are columns. Matrix stores pointers to
      * elevators.
      */
-    std::vector<std::vector<Elevator *>> buildingTable;
+    building_table_t buildingTable;
 
     /**
      * Map of floor numbers to currently pressed buttons.
      * A floor can have multiple buttons pressed (up/down).
-     * todo: swapped
      */
     QMultiHash<Direction, int> floorRequests;
 
