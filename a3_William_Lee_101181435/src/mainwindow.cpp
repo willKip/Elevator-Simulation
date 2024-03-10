@@ -41,10 +41,12 @@ MainWindow::MainWindow(QWidget *parent)
     QWidget *floorButtonContainer;
     QVBoxLayout *floorButtonLayout;
     FloorButton *up, *down;
-    int floorNum;
 
-    for (int f = 0; f < FLOOR_COUNT; f++) {
-        floorNum = buildingModel->index_to_floorNum(f);
+    for (int f = 0; f < FLOOR_COUNT; ++f) {
+        Building::FloorData *fd = buildingModel->getFloor_byIndex(f);
+
+        // TODO: connect to appropriate floor here
+        int floorNum = fd->floorNumber;
 
         // Container widget
         floorButtonContainer = new QWidget;
@@ -55,9 +57,9 @@ MainWindow::MainWindow(QWidget *parent)
         floorButtonLayout->setContentsMargins(0, 0, 0, 0);
 
         // Initialize buttons
-        up = new FloorButton(floorNum, Direction::UP, false,
+        up = new FloorButton(floorNum, Building::Direction::UP, false,
                              QString("floor%1UpButton").arg(floorNum));
-        down = new FloorButton(floorNum, Direction::DOWN, false,
+        down = new FloorButton(floorNum, Building::Direction::DOWN, false,
                                QString("floor%1DownButton").arg(floorNum));
 
         // Disable non-applicable floor buttons
@@ -76,6 +78,9 @@ MainWindow::MainWindow(QWidget *parent)
 
         floorButtonLayout->addWidget(up);
         floorButtonLayout->addWidget(down);
+
+        fd->upButton = up;
+        fd->downButton = down;
 
         ui->buildingView->setIndexWidget(
             buildingModel->index(f, ELEVATOR_COUNT), floorButtonContainer);

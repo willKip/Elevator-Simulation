@@ -12,13 +12,12 @@
 
 #include "Building.h"
 
-Elevator::Elevator(int carId, int initialFloor, QObject *parent)
+Elevator::Elevator(int carId, QObject *parent)
     : QObject(parent),
       carId(carId),
       currentMovement(MovementState::STOPPED),
       doorState(DoorState::CLOSED),
-      emergencyState(EmergencyState::NONE),
-      currentFloor(initialFloor) {
+      emergencyState(EmergencyState::NONE) {
     // QStateMachine elevatorStateMachine;
     // QState *idleState = new QState();
     // QState *movingState = new QState();
@@ -39,7 +38,9 @@ Elevator::Elevator(int carId, int initialFloor, QObject *parent)
 
 void Elevator::determineMovement() {
     // Slot called by the building every time theres a change
-    if (currentFloor < 7) {
+    // TODO: read current floor off of building
+
+    if (true) {
         emit Elevator::movingStateSig(carId, Elevator::MovementState::UPWARDS);
     } else {
         emit Elevator::movingStateSig(carId, Elevator::MovementState::STOPPED);
@@ -109,9 +110,6 @@ QString Elevator::getElevatorString() const {
     }
     return QString("%1\n%2%3").arg(movementStr, doorStr, emergencyStr);
 }
-int Elevator::getCarId() const { return carId; }
-int Elevator::getCurrentFloor() const { return currentFloor; }
-void Elevator::setCurrentFloor(int newFloor) { currentFloor = newFloor; }
 
 void Elevator::updateBuildingData() {
     Building *b = qobject_cast<Building *>(sender());

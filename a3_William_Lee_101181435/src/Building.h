@@ -5,11 +5,12 @@
 #include <QBrush>
 #include <QDebug>
 #include <QFont>
-#include <QMultiHash>
+#include <QHash>
 #include <QMutex>
+#include <QPushButton>
+#include <QString>
 #include <QVector>
 
-#include "Direction.h"
 #include "Elevator.h"
 
 /**
@@ -19,8 +20,8 @@
  * Extends QAbstractTableModel, serving the role of Model in the MVC paradigm.
  *
  * Member variables:
- * - floor_count        Number of floors in the building.
- * - elevator_count     Number of elevators in the building.
+ * - floorCount        Number of floors in the building.
+ * - elevatorCount     Number of elevators in the building.
  * - buildingTable      2-dimensional matrix with rows as floors, columns as
  *                      elevators.
  * TODO
@@ -29,13 +30,47 @@ class Building : public QAbstractTableModel {
     Q_OBJECT
 
    public:
-    using building_column_t = QVector<Elevator *>;
-    using building_table_t = QVector<building_column_t>;
-
     enum class EmergencyState { FIRE, POWER_OUT };
+    enum class Direction { UP, DOWN };
 
-    Building(int floor_count, int elevator_count, int add_rows = 0,
-             int add_cols = 0, QObject *parent = nullptr);
+    // Nested data classes for ease of organization
+    class FloorData {
+       public:
+        FloorData(int i, int fn) : index(i), floorNumber(fn){};
+
+        const int index;
+        const int floorNumber;
+        bool pressedUp() const { return upButton->isChecked(); }
+        bool pressedDown() const { return downButton->isChecked(); }
+
+        // Will be assigned by MainWindow
+        QPushButton *upButton;
+        QPushButton *downButton;
+    };
+
+    class ElevatorData {
+       public:
+        ElevatorData(int index, int carId, int initFloorNum,
+                     Building *parentBuilding)
+            : index(index),
+              carId(carId),
+              currentFloorNum(initFloorNum),
+              obj(new Elevator(carId, parentBuilding)) {
+            // Connect signals between building and new elevator
+            connect(obj, &Elevator::movingStateSig, parentBuilding,
+                    &Building::moveElevator);
+            connect(parentBuilding, &QAbstractItemModel::dataChanged, obj,
+                    &Elevator::updateBuildingData);
+        };
+
+        const int index;
+        const int carId;
+        int currentFloorNum;
+        Elevator *const obj;
+    };
+
+    Building(int floorCount, int elevatorCount, int buttonRowCount = 0,
+             int buttonColCount = 0, QObject *parent = nullptr);
 
     // Implement virtual functions from QAbstractTableModel
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
@@ -44,13 +79,11 @@ class Building : public QAbstractTableModel {
                   int role = Qt::DisplayRole) const override;
     QVariant headerData(int section, Qt::Orientation, int role) const override;
 
-    /**
-     * Helpers for accessing the 0-indexed table with floor numbers and car IDs.
-     */
-    // Return floor number from index. Do the inverse if the flag is set.
-    int index_to_floorNum(int x, bool inverse = false) const;
-    // Return car ID from index. Do the inverse if the flag is set.
-    int index_to_carId(int x, bool inverse = false) const;
+    // Access methods for floor and elevator data
+    FloorData *getFloor_byIndex(int index);
+    FloorData *getFloor_byFloorNum(int floorNum);
+    ElevatorData *getElevator_byIndex(int index);
+    ElevatorData *getElevator_byCarId(int carId);
 
    public slots:
     // Reflect floor button state changes on data
@@ -63,33 +96,31 @@ class Building : public QAbstractTableModel {
    private:
     QMutex mutex;
 
-    const int floor_count;     // Each floor gets a row
-    const int elevator_count;  // Each elevator gets a column
+    const int floorCount;     // Each floor gets a row
+    const int elevatorCount;  // Each elevator gets a column
 
     // Additional non-data rows and columns can be allocated for buttons.
-    const int add_rows;
-    const int add_cols;
+    const int buttonRowCount;
+    const int buttonColCount;
 
-    /**
-     * 2D array (matrix) representing the building's elevator positions.
-     * Floors are rows, elevators are columns. Matrix stores pointers to
-     * elevators.
-     */
-    building_table_t buildingTable;
+    // Defines how floor and elevator IDs are assigned relative to their
+    // indices.
+    int index_to_floorNum(int index) const;
+    int index_to_carId(int index) const;
+    // Const access method for data function use
+    const ElevatorData *getElevator_byIndex(int index) const;
 
-    /**
-     * Map of floor numbers to currently pressed buttons.
-     * A floor can have multiple buttons pressed (up/down).
-     */
-    QMultiHash<Direction, int> floorRequests;
+    // Mappings of data indices to corresponding floor and elevator data
+    // classes. Use access methods to manipulate after initialization.
+    QHash<int, FloorData *> indexFloorMap;
+    QHash<int, ElevatorData *> indexElevatorMap;
+    QHash<int, int> floorNum_toIndexMap;
+    QHash<int, int> carId_toIndexMap;
 
     /**
      * Set the elevator of the given ID to the given floor.
      * Returns the previous floor number.
      */
     int placeElevator(int carId, int newFloorNum);
-
-    // Return the floor of the elevator with the given ID.
-    int getElevatorFloor(int carId) const;
 };
 #endif /* BUILDING_H */

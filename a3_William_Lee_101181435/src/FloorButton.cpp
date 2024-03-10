@@ -5,7 +5,7 @@
 #include <QSizePolicy>
 #include <QString>
 
-#include "Direction.h"
+#include "Building.h"
 
 // Static definitions
 const QString FloorButton::checkedStyleSheetStr =
@@ -13,8 +13,8 @@ const QString FloorButton::checkedStyleSheetStr =
     "color: rgb(255,255,255);";
 const QString FloorButton::unCheckedStyleSheetStr = "";
 
-FloorButton::FloorButton(int f, Direction d, bool c, QString objectName,
-                         QWidget *parent)
+FloorButton::FloorButton(int f, Building::Direction d, bool c,
+                         QString objectName, QWidget *parent)
     : QPushButton(parent), floorNum(f), direction(d), checked(c) {
     if (!objectName.isEmpty()) setObjectName(objectName);
 
@@ -35,16 +35,16 @@ void FloorButton::setChecked(bool newState) {
     }
 }
 
-Direction FloorButton::getDirection() { return direction; }
+Building::Direction FloorButton::getDirection() { return direction; }
 
 int FloorButton::getFloorNum() { return floorNum; }
 
 QString FloorButton::directionToLabelText() const {
     switch (direction) {
-        case Direction::UP:
+        case Building::Direction::UP:
             return "UP ▲";
             break;
-        case Direction::DOWN:
+        case Building::Direction::DOWN:
             return "DOWN ▼";
             break;
         default:

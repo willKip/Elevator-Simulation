@@ -1,51 +1,48 @@
 #include "Building.h"
 
 #include <QAbstractTableModel>
+#include <QBrush>
+#include <QDebug>
+#include <QFont>
 #include <QMultiHash>
+#include <QMutex>
+#include <QPair>
 #include <QRandomGenerator>
+#include <QString>
 #include <QTimer>
 #include <QVector>
 #include <QtGlobal>
 
-#include "Direction.h"
 #include "Elevator.h"
 #include "FloorButton.h"
 
 Building::Building(int f, int e, int ar, int ac, QObject *parent)
     : QAbstractTableModel(parent),
-      floor_count(f),
-      elevator_count(e),
-      add_rows(ar),
-      add_cols(ac),
-      buildingTable(building_table_t(
-          floor_count, building_column_t(elevator_count, nullptr))) {
-    /**
-     * Initialize building table
-     */
-    Elevator *newElevator;
-    int initFloorNum;
+      floorCount(f),
+      elevatorCount(e),
+      buttonRowCount(ar),
+      buttonColCount(ac) {
+    // Initialize floors (connection to UI buttons done after in MainWindow)
+    for (int f_ind = 0; f_ind < floorCount; ++f_ind) {
+        int floorNum = index_to_floorNum(f_ind);
 
-    for (int elevatorIndex = 0; elevatorIndex < elevator_count;
-         elevatorIndex++) {
-        // Initialize each elevator on a random floor.
-        initFloorNum = index_to_floorNum(
-            QRandomGenerator::global()->bounded(0, floor_count));
+        floorNum_toIndexMap.insert(floorNum, f_ind);
 
-        newElevator =
-            new Elevator(index_to_carId(elevatorIndex), initFloorNum, this);
-
-        buildingTable[index_to_floorNum(initFloorNum, true)][elevatorIndex] =
-            newElevator;
-
-        connect(newElevator, &Elevator::movingStateSig, this,
-                &Building::moveElevator);
-        connect(this, &QAbstractItemModel::dataChanged, newElevator,
-                &Elevator::updateBuildingData);
+        indexFloorMap.insert(f_ind, new FloorData(f_ind, floorNum));
     }
 
-    // for (int eInd = 0; eInd < elevator_count, eInd++) {
+    // Initialize elevators
+    for (int e_ind = 0; e_ind < elevatorCount; ++e_ind) {
+        // Generate random valid starting floor index
+        int initFloorIndex = QRandomGenerator::global()->bounded(0, floorCount);
+        int initFloorNum = index_to_floorNum(initFloorIndex);
+        int carId = index_to_carId(e_ind);
 
-    // }
+        carId_toIndexMap.insert(carId, e_ind);
+
+        indexElevatorMap.insert(
+            e_ind, new ElevatorData(e_ind, carId, initFloorNum, this));
+    }
 
     // // TODO: Move declarations to header
     // QTimer *moveTimer = new QTimer(this);
@@ -58,7 +55,7 @@ Building::Building(int f, int e, int ar, int ac, QObject *parent)
 
 void Building::moveElevator(int carId,
                             Elevator::MovementState elevatorDirection) {
-    int currentFloor = getElevatorFloor(carId);
+    int currentFloor = getElevator_byCarId(carId)->currentFloorNum;
     int newFloor;
 
     switch (elevatorDirection) {
@@ -85,81 +82,56 @@ void Building::moveElevator(int carId,
 }
 
 int Building::placeElevator(int carId, int newFloorNum) {
-    int prevFloorNum = getElevatorFloor(carId);
+    ElevatorData *elevatorData = getElevator_byCarId(carId);
+
+    int prevFloorNum = elevatorData->currentFloorNum;
 
     if (prevFloorNum != newFloorNum) {
-        int prevFloorRow = index_to_floorNum(prevFloorNum, true);
-        int elevatorColumn = index_to_carId(carId, true);
-
-        // Null the previous location's pointer and move the elevator's pointer
-        // to the new floor.
-        Elevator *e = buildingTable[prevFloorRow][elevatorColumn];
-        buildingTable[prevFloorRow][elevatorColumn] = nullptr;
-        buildingTable[index_to_floorNum(newFloorNum, true)][elevatorColumn] = e;
-
-        e->setCurrentFloor(newFloorNum);
+        elevatorData->currentFloorNum = newFloorNum;
 
         // Inform view to update the moved elevator's column
-        emit dataChanged(index(0, elevatorColumn),
-                         index(floor_count, elevatorColumn));
+        emit dataChanged(index(0, elevatorData->index),
+                         index(floorCount, elevatorData->index));
     }
 
     return prevFloorNum;
 }
 
-int Building::getElevatorFloor(int carId) const {
-    int elevatorColumn = index_to_carId(carId, true);
-
-    Elevator *currElevator;
-    for (int f_index = 0; f_index < floor_count; f_index++) {
-        currElevator = buildingTable[f_index][elevatorColumn];
-
-        if (currElevator) return index_to_floorNum(f_index);
-    }
-
-    // No elevator was found after iterating over all possible floors!
-    throw "Error: Elevator missing from its shaft?";
-}
-
 int Building::rowCount(const QModelIndex & /*parent*/) const {
-    return floor_count + add_rows;  // Add rows used for buttons.
+    return floorCount + buttonRowCount;  // Add rows used for buttons.
 }
 
 int Building::columnCount(const QModelIndex & /*parent*/) const {
-    return elevator_count + add_cols;  // Add columns used for buttons.
+    return elevatorCount + buttonColCount;  // Add columns used for buttons.
 }
 
 QVariant Building::data(const QModelIndex &index, int role) const {
     int row = index.row();
     int col = index.column();
 
-    // Only access data for non-button columns and rows.
-    if (row < floor_count && col < elevator_count) {
-        Elevator *e = buildingTable[row][col];
+    // Only access data for rows and columns not reserved for button placement.
+    if (row < floorCount && col < elevatorCount) {
+        const ElevatorData *ed = getElevator_byIndex(col);
 
-        switch (role) {
-            case Qt::DisplayRole:
-                // Key data, rendered as text
-                if (e) {
-                    return e->getElevatorString();
-                } else {
-                    return QString("");
-                }
-                break;
-            case Qt::BackgroundRole:
-                // Background brush
-                if (e) {
+        if (index_to_floorNum(row) == ed->currentFloorNum) {
+            switch (role) {
+                case Qt::DisplayRole:
+                    // Key data, rendered as text
+                    return ed->obj->getElevatorString();
+                    break;
+                case Qt::BackgroundRole:
+                    // Background brush
                     // Color the cell of current elevator location
                     return QBrush(Qt::cyan);
-                }
-                break;
-            case Qt::TextAlignmentRole:
-                // Align text within cell.
-                // Int conversion is a hack to achieve the horizontal center
-                // align + vertical top align (the flags are internally
-                // bitstrings).
-                return int(Qt::AlignHCenter | Qt::AlignTop);
-                break;
+                    break;
+                case Qt::TextAlignmentRole:
+                    // Align text within cell.
+                    // Int conversion is a hack to achieve the horizontal center
+                    // align + vertical top align (the flags are internally
+                    // bitstrings).
+                    return int(Qt::AlignHCenter | Qt::AlignTop);
+                    break;
+            }
         }
     }
 
@@ -177,14 +149,16 @@ void Building::updateFloorRequests() {
     Direction fb_dir = fb->getDirection();
     int fb_floorNum = fb->getFloorNum();
 
-    bool inFloorRequests = floorRequests.contains(fb_dir, fb_floorNum);
+    FloorData *floorData = getFloor_byFloorNum(fb_floorNum);
 
-    if (inFloorRequests) {
-        floorRequests.remove(fb_dir, fb_floorNum);
-    } else {
-        floorRequests.insert(fb_dir, fb_floorNum);
+    switch (fb_dir) {
+        case Direction::UP:
+            fb->setChecked(!(floorData->pressedUp()));
+            break;
+        case Direction::DOWN:
+            fb->setChecked(!(floorData->pressedDown()));
+            break;
     }
-    fb->setChecked(!inFloorRequests);
 
     mutex.unlock();
 }
@@ -194,11 +168,11 @@ QVariant Building::headerData(int section, Qt::Orientation orientation,
     if (role == Qt::DisplayRole) {
         switch (orientation) {
             case Qt::Horizontal:
-                if (section < elevator_count)
+                if (section < elevatorCount)
                     return QString("Elevator %1").arg(index_to_carId(section));
                 break;
             case Qt::Vertical:
-                if (section < floor_count)
+                if (section < floorCount)
                     return QString("F%1").arg(index_to_floorNum(section));
                 break;
         }
@@ -206,36 +180,35 @@ QVariant Building::headerData(int section, Qt::Orientation orientation,
     return QVariant();
 }
 
-int Building::index_to_floorNum(int x, bool inverse) const {
-    // Floors start from 1 and increment by 1.
-    if (inverse) {
-        // Floor number to table row index
-        if (x > floor_count || x < 1) {
-            throw "ERROR: invalid floor number";
-        }
-        return floor_count - x;  // index
-    } else {
-        // Row index to floor number
-        if (x + 1 > floor_count || x < 0) {
-            throw "ERROR: building table floor (row) index out of bounds";
-        }
-        return floor_count - x;  // floor number
-    }
+int Building::index_to_floorNum(int index) const {
+    // Floors start from 1 and increment by 1; lowest index is highest floor
+    if (index + 1 > floorCount || index < 0)
+        throw "ERROR: building table floor (row) index out of bounds";
+    return floorCount - index;  // floor number
 }
 
-int Building::index_to_carId(int x, bool inverse) const {
-    // Car (elevator) IDs are incremental integers starting from 1.
-    if (inverse) {
-        // Car ID to table column index
-        if (x > elevator_count || x < 1) {
-            throw "ERROR: invalid car id";
-        }
-        return x - 1;  // index
-    } else {
-        // Column index to car ID
-        if (x + 1 > elevator_count || x < 0) {
-            throw "ERROR: building table carId (col) index out of bounds";
-        }
-        return x + 1;  // floor number
+int Building::index_to_carId(int index) const {
+    // Car (elevator) IDs are integers incrementing from 1.
+    // Lowest index is lowest car ID.
+    if (index + 1 > elevatorCount || index < 0) {
+        throw "ERROR: building table carId (col) index out of bounds";
     }
+    return index + 1;  // car ID
+}
+
+Building::FloorData *Building::getFloor_byIndex(int index) {
+    return indexFloorMap[index];
+}
+Building::FloorData *Building::getFloor_byFloorNum(int floorNum) {
+    return indexFloorMap[floorNum_toIndexMap[floorNum]];
+}
+Building::ElevatorData *Building::getElevator_byIndex(int index) {
+    return indexElevatorMap[index];
+}
+Building::ElevatorData *Building::getElevator_byCarId(int carId) {
+    return indexElevatorMap[carId_toIndexMap[carId]];
+}
+
+const Building::ElevatorData *Building::getElevator_byIndex(int index) const {
+    return indexElevatorMap[index];
 }

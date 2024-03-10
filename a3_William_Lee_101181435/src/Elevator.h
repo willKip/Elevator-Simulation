@@ -10,8 +10,6 @@
 #include <QStateMachine>
 #include <QString>
 
-#include "Direction.h"
-
 /**
  * Store and compute elevator movement and state.
  * They exist as part of Building classes.
@@ -33,16 +31,11 @@ class Elevator : public QObject {
         HELP
     };
 
-    Elevator(int carId, int initialFloor, QObject *parent = nullptr);
+    Elevator(int carId, QObject *parent = nullptr);
 
     // int readDoorSensor(); // TODO
 
-    // Getters
-    int getCarId() const;
-    int getCurrentFloor() const;
-
-    // Setters
-    void setCurrentFloor(int f);
+    const int carId;
 
     // Return a string representing the elevator's status.
     QString getElevatorString() const;
@@ -55,7 +48,6 @@ class Elevator : public QObject {
     void determineMovement();
 
    private:
-    const int carId;
     // Ordered FIFO queue of floors selected on the floor panel.
     QQueue<int> pressedFloors;
 
@@ -64,9 +56,8 @@ class Elevator : public QObject {
     EmergencyState emergencyState;
 
     // Current floor number
-    int currentFloor;
 
-    void Elevator::emitMovingStateSig();
+    // void Elevator::emitMovingStateSig();
 
     // todo: current text message and audio
 
