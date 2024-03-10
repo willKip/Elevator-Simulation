@@ -34,24 +34,19 @@ class Elevator : public QObject {
     Elevator(int carId, QObject* parent = nullptr);
 
     const int carId;
+    // Ordered FIFO queue of floors selected on the floor panel.
+    QQueue<int> pressedFloors;
+    MovementState currentMovement;
+    DoorState doorState;
+    EmergencyState emergencyState;
 
     // Return a string representing the elevator's status.
     QString getElevatorString() const;
-
-   signals:
-    void movingStateSig(int carId, Elevator::MovementState);
 
    public slots:
     void determineMovement();
 
    private:
-    // Ordered FIFO queue of floors selected on the floor panel.
-    QQueue<int> pressedFloors;
-
-    MovementState currentMovement;
-    DoorState doorState;
-    EmergencyState emergencyState;
-
     // todo: current text message and audio
 
     // todo: determine next action

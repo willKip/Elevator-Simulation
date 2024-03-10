@@ -16,6 +16,49 @@
 #include "Elevator.h"
 #include "FloorButton.h"
 
+ElevatorData::ElevatorData(int index, int carId, int initFloorNum,
+                           Building *parentBuilding, QObject *parent)
+    : QObject(parent),
+      index(index),
+      carId(carId),
+      currentFloorNum(initFloorNum),
+      obj(new Elevator(carId, parentBuilding)),
+      elevatorTimer(new QTimer(parentBuilding)),
+      parentBuilding(parentBuilding) {
+    // Set up timer for this elevator in the building
+    elevatorTimer->setInterval(1000);  // TODO: make variable
+
+    // Connect signals between building and new elevator
+    connect(parentBuilding, &QAbstractItemModel::dataChanged, obj,
+            &Elevator::determineMovement);
+    connect(elevatorTimer, &QTimer::timeout, this, &ElevatorData::moveElevator);
+}
+
+void ElevatorData::moveElevator() {
+    switch (obj->currentMovement) {
+        case Elevator::MovementState::UPWARDS:
+            parentBuilding->placeElevator(carId, currentFloorNum + 1);
+            break;
+        case Elevator::MovementState::DOWNWARDS:
+            parentBuilding->placeElevator(carId, currentFloorNum - 1);
+            break;
+        case Elevator::MovementState::STOPPED:
+            break;
+    }
+}
+
+void ElevatorData::startMovement() {
+    if (obj->currentMovement == Elevator::MovementState::STOPPED) {
+        elevatorTimer->stop();
+    } else {
+        elevatorTimer->start();
+    }
+}
+
+FloorData::FloorData(int i, int fn) : index(i), floorNumber(fn){};
+bool FloorData::pressedUp() const { return upButton->isChecked(); }
+bool FloorData::pressedDown() const { return downButton->isChecked(); }
+
 Building::Building(int f, int e, int ar, int ac, QObject *parent)
     : QAbstractTableModel(parent),
       floorCount(f),
@@ -41,58 +84,33 @@ Building::Building(int f, int e, int ar, int ac, QObject *parent)
         carId_toIndexMap.insert(carId, e_ind);
 
         indexElevatorMap.insert(
-            e_ind, new ElevatorData(e_ind, carId, initFloorNum, this));
-    }
-
-    // // TODO: Move declarations to header
-    // QTimer *moveTimer = new QTimer(this);
-
-    // moveTimer->connect(moveTimer, &QTimer::timeout, this, &MainWindow::Test);
-    // moveTimer->start(2000);
-}
-
-// TODO: Instantiate elevator loop for each
-
-void Building::moveElevator(int carId,
-                            Elevator::MovementState elevatorDirection) {
-    int currentFloor = getElevator_byCarId(carId)->currentFloorNum;
-    int newFloor;
-
-    switch (elevatorDirection) {
-        case Elevator::MovementState::UPWARDS:
-            newFloor = currentFloor + 1;
-            break;
-        case Elevator::MovementState::DOWNWARDS:
-            newFloor = currentFloor - 1;
-            break;
-        case Elevator::MovementState::STOPPED:
-            newFloor = currentFloor;
-            break;
-    }
-
-    // Delay before elevator completes movement
-
-    try {
-        placeElevator(carId, newFloor);
-    } catch (...) {
-        // This would indicate a flaw in elevator logic, it should be smart
-        // enough to not attempt invalid movement.
-        throw "Error: Elevator attempted invalid movement!";
+            e_ind, new ElevatorData(e_ind, carId, initFloorNum, this, this));
     }
 }
 
 int Building::placeElevator(int carId, int newFloorNum) {
+    mutex.lock();
+
+    // This would indicate a flaw in elevator logic, it should be smart
+    // enough to not attempt invalid movement.
+    if (floorNum_toIndexMap[newFloorNum] < 0 ||
+        floorNum_toIndexMap[newFloorNum] >= floorCount)
+        throw "Error: Elevator attempted invalid movement!";
+
     ElevatorData *elevatorData = getElevator_byCarId(carId);
 
     int prevFloorNum = elevatorData->currentFloorNum;
 
     if (prevFloorNum != newFloorNum) {
         elevatorData->currentFloorNum = newFloorNum;
+        qInfo() << "elevator " << carId << " moved from " << prevFloorNum
+                << " to " << newFloorNum;
 
         // Inform view to update the moved elevator's column
         emit dataChanged(index(0, elevatorData->index),
                          index(floorCount, elevatorData->index));
     }
+    mutex.unlock();
 
     return prevFloorNum;
 }
@@ -185,19 +203,19 @@ int Building::index_to_carId(int index) const {
     return index + 1;  // car ID
 }
 
-Building::FloorData *Building::getFloor_byIndex(int index) {
+FloorData *Building::getFloor_byIndex(int index) {
     return indexFloorMap[index];
 }
-Building::FloorData *Building::getFloor_byFloorNum(int floorNum) {
+FloorData *Building::getFloor_byFloorNum(int floorNum) {
     return indexFloorMap[floorNum_toIndexMap[floorNum]];
 }
-Building::ElevatorData *Building::getElevator_byIndex(int index) {
+ElevatorData *Building::getElevator_byIndex(int index) {
     return indexElevatorMap[index];
 }
-Building::ElevatorData *Building::getElevator_byCarId(int carId) {
+ElevatorData *Building::getElevator_byCarId(int carId) {
     return indexElevatorMap[carId_toIndexMap[carId]];
 }
 
-const Building::ElevatorData *Building::getElevator_byIndex(int index) const {
+const ElevatorData *Building::getElevator_byIndex(int index) const {
     return indexElevatorMap[index];
 }

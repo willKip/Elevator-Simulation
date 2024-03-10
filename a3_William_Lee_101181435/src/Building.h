@@ -9,10 +9,51 @@
 #include <QMutex>
 #include <QPushButton>
 #include <QString>
+#include <QTimer>
 #include <QVector>
 
 #include "Elevator.h"
 #include "FloorButton.h"
+
+class ElevatorData;
+class FloorData;
+class Building;
+
+// TODO
+/**
+ * Class designed to couple elevator-related data on the building side.
+ */
+class ElevatorData : public QObject {
+    Q_OBJECT
+   public:
+    ElevatorData(int index, int carId, int initFloorNum,
+                 Building *parentBuilding, QObject *parent = nullptr);
+
+    const int index;
+    const int carId;
+    int currentFloorNum;
+    Elevator *const obj;
+    QTimer *elevatorTimer;
+    Building *parentBuilding;
+
+    void moveElevator();
+    void startMovement();
+};
+
+// TODO: documentation
+class FloorData {
+   public:
+    FloorData(int index, int floorNumber);
+
+    const int index;
+    const int floorNumber;
+    bool pressedUp() const;
+    bool pressedDown() const;
+
+    // Will be assigned by MainWindow
+    FloorButton *upButton;
+    FloorButton *downButton;
+};
 
 /**
  * Class simulating a building with elevators.
@@ -33,42 +74,6 @@ class Building : public QAbstractTableModel {
    public:
     enum class EmergencyState { FIRE, POWER_OUT };
 
-    // Nested data classes for ease of organization
-    class FloorData {
-       public:
-        FloorData(int i, int fn) : index(i), floorNumber(fn){};
-
-        const int index;
-        const int floorNumber;
-        bool pressedUp() const { return upButton->isChecked(); }
-        bool pressedDown() const { return downButton->isChecked(); }
-
-        // Will be assigned by MainWindow
-        FloorButton *upButton;
-        FloorButton *downButton;
-    };
-
-    class ElevatorData {
-       public:
-        ElevatorData(int index, int carId, int initFloorNum,
-                     Building *parentBuilding)
-            : index(index),
-              carId(carId),
-              currentFloorNum(initFloorNum),
-              obj(new Elevator(carId, parentBuilding)) {
-            // Connect signals between building and new elevator
-            connect(obj, &Elevator::movingStateSig, parentBuilding,
-                    &Building::moveElevator);
-            connect(parentBuilding, &QAbstractItemModel::dataChanged, obj,
-                    &Elevator::determineMovement);
-        };
-
-        const int index;
-        const int carId;
-        int currentFloorNum;
-        Elevator *const obj;
-    };
-
     Building(int floorCount, int elevatorCount, int buttonRowCount = 0,
              int buttonColCount = 0, QObject *parent = nullptr);
 
@@ -85,13 +90,15 @@ class Building : public QAbstractTableModel {
     ElevatorData *getElevator_byIndex(int index);
     ElevatorData *getElevator_byCarId(int carId);
 
+    /**
+     * Set the elevator of the given ID to the given floor.
+     * Returns the previous floor number.
+     */
+    int placeElevator(int carId, int newFloorNum);
+
    public slots:
     // Reflect floor button state changes on data
     void updateFloorRequests();
-
-   private slots:
-    // Move elevator one floor in the specified direction.
-    void moveElevator(int carId, Elevator::MovementState elevatorDirection);
 
    private:
     QMutex mutex;
@@ -116,11 +123,5 @@ class Building : public QAbstractTableModel {
     QHash<int, ElevatorData *> indexElevatorMap;
     QHash<int, int> floorNum_toIndexMap;
     QHash<int, int> carId_toIndexMap;
-
-    /**
-     * Set the elevator of the given ID to the given floor.
-     * Returns the previous floor number.
-     */
-    int placeElevator(int carId, int newFloorNum);
 };
 #endif /* BUILDING_H */

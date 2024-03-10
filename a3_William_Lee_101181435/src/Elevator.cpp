@@ -17,37 +17,27 @@ Elevator::Elevator(int carId, QObject *parent)
       carId(carId),
       currentMovement(MovementState::STOPPED),
       doorState(DoorState::CLOSED),
-      emergencyState(EmergencyState::NONE) {
-    // QStateMachine elevatorStateMachine;
-    // QState *idleState = new QState();
-    // QState *movingState = new QState();
-
-    // connect(movingState, &QState::entered, this,
-    // &Elevator::determineMovement);
-
-    // // TODO: change states to normal movement / emergency / ...?
-
-    // elevatorStateMachine.addState(idleState);
-    // elevatorStateMachine.addState(movingState);
-
-    // elevatorStateMachine.setInitialState(movingState);
-    // elevatorStateMachine.setInitialState(idleState);
-
-    // elevatorStateMachine.start();
-}
+      emergencyState(EmergencyState::NONE) {}
 
 void Elevator::determineMovement() {
     // Slot called by the building every time theres a change
-    // TODO: read current floor off of building
 
-    Building *building = qobject_cast<Building *>(sender());
-    Building::ElevatorData *elevatorState =
-        building->getElevator_byCarId(carId);
+    using MS = MovementState;
 
-    if (elevatorState->currentFloorNum < 7) {
-        emit Elevator::movingStateSig(carId, Elevator::MovementState::UPWARDS);
-    } else {
-        emit Elevator::movingStateSig(carId, Elevator::MovementState::STOPPED);
+    ElevatorData *elevatorData =
+        qobject_cast<Building *>(sender())->getElevator_byCarId(carId);
+
+    MS newMovement;
+
+    if (elevatorData->currentFloorNum < 7) {
+        newMovement = MS::UPWARDS;
+    } else if (elevatorData->currentFloorNum == 7) {
+        newMovement = MS::DOWNWARDS;
+    }
+
+    if (currentMovement != newMovement) {
+        currentMovement = newMovement;
+        elevatorData->startMovement();
     }
 }
 

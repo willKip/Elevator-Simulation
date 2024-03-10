@@ -44,7 +44,7 @@ MainWindow::MainWindow(QWidget *parent)
     FloorButton *up, *down;
 
     for (int f = 0; f < FLOOR_COUNT; ++f) {
-        Building::FloorData *fd = buildingModel->getFloor_byIndex(f);
+        FloorData *fd = buildingModel->getFloor_byIndex(f);
 
         // TODO: connect to appropriate floor here
         int floorNum = fd->floorNumber;
