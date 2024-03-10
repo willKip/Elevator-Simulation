@@ -40,17 +40,16 @@ void Elevator::determineMovement() {
     // Slot called by the building every time theres a change
     // TODO: read current floor off of building
 
-    if (true) {
+    Building *building = qobject_cast<Building *>(sender());
+    Building::ElevatorData *elevatorState =
+        building->getElevator_byCarId(carId);
+
+    if (elevatorState->currentFloorNum < 7) {
         emit Elevator::movingStateSig(carId, Elevator::MovementState::UPWARDS);
     } else {
         emit Elevator::movingStateSig(carId, Elevator::MovementState::STOPPED);
     }
 }
-
-// void Elevator::emitMovingStateSig() {
-//     // TODO: direction
-//     emit Elevator::movingStateSig(carId, Elevator::MovementState::UPWARDS);
-// }
 
 QString Elevator::getElevatorString() const {
     QString movementStr;
@@ -110,9 +109,3 @@ QString Elevator::getElevatorString() const {
     }
     return QString("%1\n%2%3").arg(movementStr, doorStr, emergencyStr);
 }
-
-void Elevator::updateBuildingData() {
-    Building *b = qobject_cast<Building *>(sender());
-}
-
-// int Elevator::readDoorSensor() { return } // TODO

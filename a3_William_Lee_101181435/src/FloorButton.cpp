@@ -21,7 +21,7 @@ FloorButton::FloorButton(int f, Direction d, bool c, QString objectName,
 
     setText(directionToLabelText());
 
-    // Set visual style for initial button state
+    // Set style for initial button state
     updateStyleSheet();
 
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -36,9 +36,7 @@ void FloorButton::setChecked(bool newState) {
     }
 }
 
-Direction FloorButton::getDirection() { return direction; }
-
-int FloorButton::getFloorNum() { return floorNum; }
+void FloorButton::flipChecked() { setChecked(!checked); }
 
 QString FloorButton::directionToLabelText() const {
     switch (direction) {

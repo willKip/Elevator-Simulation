@@ -21,11 +21,9 @@ class FloorButton : public QPushButton {
     FloorButton(int floorNum, Direction direction, bool initialChecked = false,
                 QString objectName = "", QWidget *parent = nullptr);
 
-    bool isChecked() const;
-    void setChecked(bool);
-
-    Direction getDirection();
-    int getFloorNum();
+    bool isChecked() const;  // Return current checked state
+    void setChecked(bool);   // Set checked to given bool
+    void flipChecked();      // Invert current checked state
 
    private:
     /**

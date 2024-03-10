@@ -146,19 +146,8 @@ void Building::updateFloorRequests() {
     mutex.lock();
 
     FloorButton *fb = qobject_cast<FloorButton *>(sender());
-    Direction fb_dir = fb->getDirection();
-    int fb_floorNum = fb->getFloorNum();
-
-    FloorData *floorData = getFloor_byFloorNum(fb_floorNum);
-
-    switch (fb_dir) {
-        case Direction::UP:
-            floorData->upButton->setChecked(!(floorData->pressedUp()));
-            break;
-        case Direction::DOWN:
-            floorData->downButton->setChecked(!(floorData->pressedDown()));
-            break;
-    }
+    fb->flipChecked();
+    emit dataChanged(index(0, elevatorCount), index(floorCount, elevatorCount));
 
     mutex.unlock();
 }

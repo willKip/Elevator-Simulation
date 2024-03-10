@@ -60,7 +60,7 @@ class Building : public QAbstractTableModel {
             connect(obj, &Elevator::movingStateSig, parentBuilding,
                     &Building::moveElevator);
             connect(parentBuilding, &QAbstractItemModel::dataChanged, obj,
-                    &Elevator::updateBuildingData);
+                    &Elevator::determineMovement);
         };
 
         const int index;

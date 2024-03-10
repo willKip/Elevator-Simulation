@@ -31,9 +31,7 @@ class Elevator : public QObject {
         HELP
     };
 
-    Elevator(int carId, QObject *parent = nullptr);
-
-    // int readDoorSensor(); // TODO
+    Elevator(int carId, QObject* parent = nullptr);
 
     const int carId;
 
@@ -44,7 +42,6 @@ class Elevator : public QObject {
     void movingStateSig(int carId, Elevator::MovementState);
 
    public slots:
-    void updateBuildingData();
     void determineMovement();
 
    private:
@@ -54,10 +51,6 @@ class Elevator : public QObject {
     MovementState currentMovement;
     DoorState doorState;
     EmergencyState emergencyState;
-
-    // Current floor number
-
-    // void Elevator::emitMovingStateSig();
 
     // todo: current text message and audio
 
