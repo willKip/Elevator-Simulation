@@ -10,6 +10,7 @@
 #include <QVBoxLayout>
 
 #include "Building.h"
+#include "Direction.h"
 #include "FloorButton.h"
 #include "ui_mainwindow.h"
 
@@ -57,9 +58,9 @@ MainWindow::MainWindow(QWidget *parent)
         floorButtonLayout->setContentsMargins(0, 0, 0, 0);
 
         // Initialize buttons
-        up = new FloorButton(floorNum, Building::Direction::UP, false,
+        up = new FloorButton(floorNum, Direction::UP, false,
                              QString("floor%1UpButton").arg(floorNum));
-        down = new FloorButton(floorNum, Building::Direction::DOWN, false,
+        down = new FloorButton(floorNum, Direction::DOWN, false,
                                QString("floor%1DownButton").arg(floorNum));
 
         // Disable non-applicable floor buttons

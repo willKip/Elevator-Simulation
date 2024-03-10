@@ -12,6 +12,7 @@
 #include <QVector>
 
 #include "Elevator.h"
+#include "FloorButton.h"
 
 /**
  * Class simulating a building with elevators.
@@ -24,14 +25,13 @@
  * - elevatorCount     Number of elevators in the building.
  * - buildingTable      2-dimensional matrix with rows as floors, columns as
  *                      elevators.
- * TODO
  */
+// TODO: description
 class Building : public QAbstractTableModel {
     Q_OBJECT
 
    public:
     enum class EmergencyState { FIRE, POWER_OUT };
-    enum class Direction { UP, DOWN };
 
     // Nested data classes for ease of organization
     class FloorData {
@@ -44,8 +44,8 @@ class Building : public QAbstractTableModel {
         bool pressedDown() const { return downButton->isChecked(); }
 
         // Will be assigned by MainWindow
-        QPushButton *upButton;
-        QPushButton *downButton;
+        FloorButton *upButton;
+        FloorButton *downButton;
     };
 
     class ElevatorData {

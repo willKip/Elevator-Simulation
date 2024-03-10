@@ -22,7 +22,8 @@ HEADERS += \
     $${source_dir}/mainwindow.h \
     $${source_dir}/Building.h \
     $${source_dir}/Elevator.h \
-    $${source_dir}/FloorButton.h
+    $${source_dir}/FloorButton.h \
+    $${source_dir}/Direction.h
 
 FORMS += \
     $${forms_dir}/mainwindow.ui

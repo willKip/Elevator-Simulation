@@ -5,7 +5,7 @@
 #include <QPushButton>
 #include <QString>
 
-#include "Building.h"
+#include "Direction.h"
 
 /**
  * Custom subclass of QPushButton that can appear to be checkable, but instead
@@ -18,13 +18,13 @@ class FloorButton : public QPushButton {
     Q_OBJECT
 
    public:
-    FloorButton(int floorNum, Building::Direction direction, bool initialChecked = false,
+    FloorButton(int floorNum, Direction direction, bool initialChecked = false,
                 QString objectName = "", QWidget *parent = nullptr);
 
     bool isChecked() const;
     void setChecked(bool);
 
-    Building::Direction getDirection();
+    Direction getDirection();
     int getFloorNum();
 
    private:
@@ -36,7 +36,7 @@ class FloorButton : public QPushButton {
     static const QString unCheckedStyleSheetStr;
 
     const int floorNum;
-    const Building::Direction direction;
+    const Direction direction;
     bool checked;
 
     // Provide mapping of Direction enum to text for the button label.

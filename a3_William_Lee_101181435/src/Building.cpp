@@ -153,10 +153,10 @@ void Building::updateFloorRequests() {
 
     switch (fb_dir) {
         case Direction::UP:
-            fb->setChecked(!(floorData->pressedUp()));
+            floorData->upButton->setChecked(!(floorData->pressedUp()));
             break;
         case Direction::DOWN:
-            fb->setChecked(!(floorData->pressedDown()));
+            floorData->downButton->setChecked(!(floorData->pressedDown()));
             break;
     }
 
