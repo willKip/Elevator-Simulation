@@ -2,7 +2,6 @@
 #define ELEVATOR_H
 
 #include <QMessageBox>
-#include <QMutex>
 #include <QObject>
 #include <QQueue>
 #include <QSignalTransition>
@@ -33,9 +32,12 @@ class Elevator : public QObject {
 
     Elevator(int carId, QObject* parent = nullptr);
 
+    // Unique ID given to each elevator within a building.
     const int carId;
+
     // Ordered FIFO queue of floors selected on the floor panel.
     QQueue<int> pressedFloors;
+
     MovementState currentMovement;
     DoorState doorState;
     EmergencyState emergencyState;
@@ -43,25 +45,21 @@ class Elevator : public QObject {
     // Return a string representing the elevator's status.
     QString getElevatorString() const;
 
+   signals:
+    // Fired when an elevator has changed to a moving state.
+    void elevatorMoving();
+
+   signals:
+    // Fired when an elevator arrives at a destination.
+    void elevatorArrived();
+
    public slots:
+    // Called by the building every time there is a change to the building state
     void determineMovement();
 
    private:
     // todo: current text message and audio
-
-    // todo: determine next action
     // If current floor has queue, stop and open for it.
-    //
-    // todo: door opening should take 2 intervals
-
-    // fn: query for floors that need an elevator. (remove if they no longer
-    // need.)
-
-    // signals:
-    // Notify building that elevator moving.
-    // retrieve current building status.
-    // slots:
-    // Receive from floor sensor current floor.
 };
 
 #endif /* ELEVATOR_H */

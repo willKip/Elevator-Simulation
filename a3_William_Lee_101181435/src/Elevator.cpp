@@ -1,7 +1,6 @@
 #include "Elevator.h"
 
 #include <QMessageBox>
-#include <QMutex>
 #include <QObject>
 #include <QQueue>
 #include <QSignalTransition>
@@ -9,8 +8,10 @@
 #include <QStateMachine>
 #include <QString>
 #include <QTimer>
+#include <algorithm>
 
 #include "Building.h"
+#include "Direction.h"
 
 Elevator::Elevator(int carId, QObject *parent)
     : QObject(parent),
@@ -20,24 +21,69 @@ Elevator::Elevator(int carId, QObject *parent)
       emergencyState(EmergencyState::NONE) {}
 
 void Elevator::determineMovement() {
-    // Slot called by the building every time theres a change
+    Building *building = qobject_cast<Building *>(sender());
+    ElevatorData *elevatorData = building->getElevator_byCarId(carId);
+    int currFloorNum = elevatorData->currentFloorNum;
 
-    using MS = MovementState;
+    // From a given nonempty list of floors, returns the number of the floor
+    // closest to the current floor. If the floor is equal distance between two
+    // floors, prioritizes the lower floor.
+    auto closestQueuedFloor =
+        [currFloorNum](const QVector<int> &floors) -> int {
+        if (floors.isEmpty())
+            throw "ERROR: No floors are queued, cannot find closest queued";
+        // TODO: ^, whether elevator was moving or idle determines whether it
+        // opens door or not.
 
-    ElevatorData *elevatorData =
-        qobject_cast<Building *>(sender())->getElevator_byCarId(carId);
+        // Current floor is below or above all queued floors.
+        if (currFloorNum <= floors.first()) return floors.first();
+        if (currFloorNum >= floors.last()) return floors.last();
 
-    MS newMovement;
+        // Current floor is between two queued floors, before and after.
+        const int *closestIt = std::adjacent_find(
+            floors.begin(), floors.end(),
+            [currFloorNum](int before, int after) {
+                return currFloorNum >= before && currFloorNum <= after;
+            });
 
-    if (elevatorData->currentFloorNum < 7) {
-        newMovement = MS::UPWARDS;
-    } else if (elevatorData->currentFloorNum == 7) {
-        newMovement = MS::DOWNWARDS;
+        int closestBefore = *closestIt;       // Closest queued before current
+        int closestAfter = *(closestIt + 1);  // Closest queued after current
+
+        // Distances to each floor.
+        int distBefore = currFloorNum - closestBefore;
+        int distAfter = closestAfter - currFloorNum;
+
+        // Return floor that is closer. In case of a tie, lower floor first.
+        if (distBefore <= distAfter)
+            return closestBefore;
+        else
+            return closestAfter;
+    };
+
+    // No buttons pressed on elevator's panel.
+    // Go to closest floor waiting for an elevator, any direction.
+    QVector<int> queuedFloors = building->getQueuedFloors();
+    // No eligible floors queued
+    if (queuedFloors.isEmpty()) {
+        currentMovement = MovementState::STOPPED;
+        emit elevatorArrived();
+        return;
     }
+    int closestFloor = closestQueuedFloor(queuedFloors);
 
-    if (currentMovement != newMovement) {
-        currentMovement = newMovement;
-        elevatorData->startMovement();
+    if (currFloorNum == closestFloor) {
+        currentMovement = MovementState::STOPPED;
+        emit elevatorArrived();
+    } else if (currFloorNum < closestFloor) {
+        if (currentMovement != MovementState::UPWARDS) {
+            currentMovement = MovementState::UPWARDS;
+            emit elevatorMoving();
+        }
+    } else if (currFloorNum > closestFloor) {
+        if (currentMovement != MovementState::DOWNWARDS) {
+            currentMovement = MovementState::DOWNWARDS;
+            emit elevatorMoving();
+        }
     }
 }
 
@@ -48,13 +94,13 @@ QString Elevator::getElevatorString() const {
 
     switch (currentMovement) {
         case Elevator::MovementState::STOPPED:
-            movementStr = "-";
+            movementStr = "STOP -";
             break;
         case Elevator::MovementState::UPWARDS:
-            movementStr = "↑";
+            movementStr = "UP ▲";
             break;
         case Elevator::MovementState::DOWNWARDS:
-            movementStr = "↓";
+            movementStr = "DOWN ▼";
             break;
         default:
             throw "ERROR: Invalid Movement enum";
@@ -64,10 +110,10 @@ QString Elevator::getElevatorString() const {
             doorStr = "(closed)";
             break;
         case Elevator::DoorState::CLOSING:
-            doorStr = "(closing)";
+            doorStr = "(closing...)";
             break;
         case Elevator::DoorState::OPENING:
-            doorStr = "(opening)";
+            doorStr = "(opening...)";
             break;
         case Elevator::DoorState::OPEN:
             doorStr = "(open)";

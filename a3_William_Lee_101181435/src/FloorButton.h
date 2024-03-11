@@ -25,6 +25,9 @@ class FloorButton : public QPushButton {
     void setChecked(bool);   // Set checked to given bool
     void flipChecked();      // Invert current checked state
 
+   signals:
+    void buttonCheckedChanged();
+
    private:
     /**
      * Qt Style Sheet strings for styling the buttons' checked and unchecked

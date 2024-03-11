@@ -24,7 +24,7 @@ MainWindow::MainWindow(QWidget *parent)
     timeCount = 0;
 
     // Initialize building data model.
-    buildingModel = new Building(FLOOR_COUNT, ELEVATOR_COUNT, 0, 1);
+    buildingModel = new Building(FLOOR_COUNT, ELEVATOR_COUNT, 3, 1);
 
     /**
      * Initialize building view in UI.
@@ -41,14 +41,8 @@ MainWindow::MainWindow(QWidget *parent)
      */
     QWidget *floorButtonContainer;
     QVBoxLayout *floorButtonLayout;
-    FloorButton *up, *down;
 
     for (int f = 0; f < FLOOR_COUNT; ++f) {
-        FloorData *fd = buildingModel->getFloor_byIndex(f);
-
-        // TODO: connect to appropriate floor here
-        int floorNum = fd->floorNumber;
-
         // Container widget
         floorButtonContainer = new QWidget;
 
@@ -57,31 +51,10 @@ MainWindow::MainWindow(QWidget *parent)
         floorButtonLayout->setSpacing(0);
         floorButtonLayout->setContentsMargins(0, 0, 0, 0);
 
-        // Initialize buttons
-        up = new FloorButton(floorNum, Direction::UP, false,
-                             QString("floor%1UpButton").arg(floorNum));
-        down = new FloorButton(floorNum, Direction::DOWN, false,
-                               QString("floor%1DownButton").arg(floorNum));
+        FloorData *fd = buildingModel->getFloor_byIndex(f);
 
-        // Disable non-applicable floor buttons
-        if (f == 0) {
-            // Top floor
-            up->setDisabled(true);
-        } else if (f == FLOOR_COUNT - 1) {
-            // Bottom floor
-            down->setDisabled(true);
-        }
-
-        connect(up, &FloorButton::pressed, buildingModel,
-                &Building::updateFloorRequests);
-        connect(down, &FloorButton::pressed, buildingModel,
-                &Building::updateFloorRequests);
-
-        floorButtonLayout->addWidget(up);
-        floorButtonLayout->addWidget(down);
-
-        fd->upButton = up;
-        fd->downButton = down;
+        floorButtonLayout->addWidget(fd->upButton);
+        floorButtonLayout->addWidget(fd->downButton);
 
         ui->buildingView->setIndexWidget(
             buildingModel->index(f, ELEVATOR_COUNT), floorButtonContainer);

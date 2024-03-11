@@ -5,7 +5,6 @@
 #include <QDebug>
 #include <QFont>
 #include <QMultiHash>
-#include <QMutex>
 #include <QPair>
 #include <QRandomGenerator>
 #include <QString>
@@ -23,15 +22,37 @@ ElevatorData::ElevatorData(int index, int carId, int initFloorNum,
       carId(carId),
       currentFloorNum(initFloorNum),
       obj(new Elevator(carId, parentBuilding)),
-      elevatorTimer(new QTimer(parentBuilding)),
+      movementTimer(new QTimer(parentBuilding)),
       parentBuilding(parentBuilding) {
-    // Set up timer for this elevator in the building
-    elevatorTimer->setInterval(1000);  // TODO: make variable
+    movementTimer->setInterval(movementMs);  // Set up timer
 
-    // Connect signals between building and new elevator
-    connect(parentBuilding, &QAbstractItemModel::dataChanged, obj,
+    // Inform elevator when parent building's data changes
+    connect(parentBuilding, &Building::buildingDataChanged, obj,
             &Elevator::determineMovement);
-    connect(elevatorTimer, &QTimer::timeout, this, &ElevatorData::moveElevator);
+
+    // Initiate elevator movement when elevator informs of state change
+    connect(obj, &Elevator::elevatorMoving, this, [this]() {
+        this->parentBuilding->updateColumn(this->index);
+        this->movementTimer->start();
+    });
+
+    // Stop elevator movement when elevator informs of arrival at destination
+    connect(obj, &Elevator::elevatorArrived, this, [this]() {
+        this->parentBuilding->updateColumn(this->index);
+        this->movementTimer->stop();
+    });
+
+    // Turn off floor's buttons since elevator arrived at floor.
+    // TODO: should turn off both if elevator has no panel buttons pressed
+    // todo: otherwise it is making a stop at the floor and resuming, disable
+    // todo: only the button along the direction of the elevator's movement.
+    connect(obj, &Elevator::elevatorArrived, this, [this]() {
+        this->parentBuilding->getFloor_byFloorNum(this->currentFloorNum)
+            ->resetButtons();
+    });
+
+    // If the movement timer completes without interruption, move the elevator.
+    connect(movementTimer, &QTimer::timeout, this, &ElevatorData::moveElevator);
 }
 
 void ElevatorData::moveElevator() {
@@ -42,22 +63,38 @@ void ElevatorData::moveElevator() {
         case Elevator::MovementState::DOWNWARDS:
             parentBuilding->placeElevator(carId, currentFloorNum - 1);
             break;
-        case Elevator::MovementState::STOPPED:
+        default:
             break;
     }
 }
 
-void ElevatorData::startMovement() {
-    if (obj->currentMovement == Elevator::MovementState::STOPPED) {
-        elevatorTimer->stop();
-    } else {
-        elevatorTimer->start();
-    }
-}
+FloorData::FloorData(int i, int fn, Building *parentBuilding, QObject *parent)
+    : QObject(parent),
+      index(i),
+      floorNumber(fn),
+      parentBuilding(parentBuilding),
+      upButton(new FloorButton(floorNumber, Direction::UP, false,
+                               QString("floor%1UpButton").arg(floorNumber))),
+      downButton(
+          new FloorButton(floorNumber, Direction::DOWN, false,
+                          QString("floor%1DownButton").arg(floorNumber))) {
+    // Disable buttons appropriately at the very top or bottom floor.
+    if (index == 0)
+        upButton->setDisabled(true);  // Top floor
+    else if (index == (parentBuilding->floorCount - 1))
+        downButton->setDisabled(true);  // Bottom floor
 
-FloorData::FloorData(int i, int fn) : index(i), floorNumber(fn){};
+    connect(upButton, &FloorButton::buttonCheckedChanged, parentBuilding,
+            &Building::buildingDataChanged);
+    connect(downButton, &FloorButton::buttonCheckedChanged, parentBuilding,
+            &Building::buildingDataChanged);
+};
 bool FloorData::pressedUp() const { return upButton->isChecked(); }
 bool FloorData::pressedDown() const { return downButton->isChecked(); }
+void FloorData::resetButtons() {
+    upButton->setChecked(false);
+    downButton->setChecked(false);
+}
 
 Building::Building(int f, int e, int ar, int ac, QObject *parent)
     : QAbstractTableModel(parent),
@@ -65,36 +102,56 @@ Building::Building(int f, int e, int ar, int ac, QObject *parent)
       elevatorCount(e),
       buttonRowCount(ar),
       buttonColCount(ac) {
-    // Initialize floors (connection to UI buttons done after in MainWindow)
     for (int f_ind = 0; f_ind < floorCount; ++f_ind) {
+        // Initialize floors (connection to UI buttons done after in MainWindow)
+
         int floorNum = index_to_floorNum(f_ind);
 
-        floorNum_toIndexMap.insert(floorNum, f_ind);
-
-        indexFloorMap.insert(f_ind, new FloorData(f_ind, floorNum));
+        index_floorNum_Map.insert(f_ind, floorNum);
+        floorNum_FloorData_Map.insert(floorNum,
+                                      new FloorData(f_ind, floorNum, this));
     }
 
-    // Initialize elevators
     for (int e_ind = 0; e_ind < elevatorCount; ++e_ind) {
+        // Initialize elevators
+
         // Generate random valid starting floor index
         int initFloorIndex = QRandomGenerator::global()->bounded(0, floorCount);
         int initFloorNum = index_to_floorNum(initFloorIndex);
+
         int carId = index_to_carId(e_ind);
 
-        carId_toIndexMap.insert(carId, e_ind);
+        index_carId_Map.insert(e_ind, carId);
 
-        indexElevatorMap.insert(
-            e_ind, new ElevatorData(e_ind, carId, initFloorNum, this, this));
+        carId_ElevatorData_Map.insert(
+            carId, new ElevatorData(e_ind, carId, initFloorNum, this, this));
     }
 }
 
-int Building::placeElevator(int carId, int newFloorNum) {
-    mutex.lock();
+const QVector<int> Building::getQueuedFloors(Direction dir) const {
+    QVector<int> matchingFloors;
 
+    // Floor data map is pre-sorted.
+    for (auto i = floorNum_FloorData_Map.cbegin(),
+              end = floorNum_FloorData_Map.cend();
+         i != end; ++i) {
+        int floorNum = i.key();
+        bool upMatched = (i.value()->pressedUp()) &&
+                         (dir == Direction::UP || dir == Direction::NONE);
+        bool downMatched = (i.value()->pressedDown()) &&
+                           (dir == Direction::DOWN || dir == Direction::NONE);
+
+        if (upMatched || downMatched) matchingFloors.append(floorNum);
+    }
+
+    // Return ascending list of all matching floor numbers.
+    return matchingFloors;
+}
+
+int Building::placeElevator(int carId, int newFloorNum) {
     // This would indicate a flaw in elevator logic, it should be smart
     // enough to not attempt invalid movement.
-    if (floorNum_toIndexMap[newFloorNum] < 0 ||
-        floorNum_toIndexMap[newFloorNum] >= floorCount)
+    if (!floorNum_FloorData_Map.contains(newFloorNum))
         throw "Error: Elevator attempted invalid movement!";
 
     ElevatorData *elevatorData = getElevator_byCarId(carId);
@@ -103,16 +160,18 @@ int Building::placeElevator(int carId, int newFloorNum) {
 
     if (prevFloorNum != newFloorNum) {
         elevatorData->currentFloorNum = newFloorNum;
-        qInfo() << "elevator " << carId << " moved from " << prevFloorNum
-                << " to " << newFloorNum;
+
+        emit buildingDataChanged();
 
         // Inform view to update the moved elevator's column
-        emit dataChanged(index(0, elevatorData->index),
-                         index(floorCount, elevatorData->index));
+        updateColumn(elevatorData->index);
     }
-    mutex.unlock();
 
     return prevFloorNum;
+}
+
+void Building::updateColumn(int col) {
+    emit dataChanged(index(0, col), index(floorCount, col));
 }
 
 int Building::rowCount(const QModelIndex & /*parent*/) const {
@@ -128,7 +187,7 @@ QVariant Building::data(const QModelIndex &index, int role) const {
     int col = index.column();
 
     // Only access data for rows and columns not reserved for button placement.
-    if (row < floorCount && col < elevatorCount) {
+    if (isFloorDataIndex(row) && isElevatorDataIndex(col)) {
         const ElevatorData *ed = getElevator_byIndex(col);
 
         if (index_to_floorNum(row) == ed->currentFloorNum) {
@@ -156,31 +215,17 @@ QVariant Building::data(const QModelIndex &index, int role) const {
     return QVariant();
 }
 
-void Building::updateFloorRequests() {
-    // Slot: When floor button is pressed, toggle its corresponding entry in the
-    // floor requests data structure and update the button.
-
-    // Prevent user interaction and elevator arrival from conflicting
-    mutex.lock();
-
-    FloorButton *fb = qobject_cast<FloorButton *>(sender());
-    fb->flipChecked();
-    emit dataChanged(index(0, elevatorCount), index(floorCount, elevatorCount));
-
-    mutex.unlock();
-}
-
 QVariant Building::headerData(int section, Qt::Orientation orientation,
                               int role) const {
     if (role == Qt::DisplayRole) {
         switch (orientation) {
             case Qt::Horizontal:
-                if (section < elevatorCount)
-                    return QString("Elevator %1").arg(index_to_carId(section));
+                if (isElevatorDataIndex(section))
+                    return QString("Elevator %1").arg(index_carId_Map[section]);
                 break;
             case Qt::Vertical:
-                if (section < floorCount)
-                    return QString("F%1").arg(index_to_floorNum(section));
+                if (isFloorDataIndex(section))
+                    return QString("F%1").arg(index_floorNum_Map[section]);
                 break;
         }
     }
@@ -189,33 +234,63 @@ QVariant Building::headerData(int section, Qt::Orientation orientation,
 
 int Building::index_to_floorNum(int index) const {
     // Floors start from 1 and increment by 1; lowest index is highest floor
-    if (index + 1 > floorCount || index < 0)
-        throw "ERROR: building table floor (row) index out of bounds";
+    validateFloorDataIndex(index);
     return floorCount - index;  // floor number
 }
 
 int Building::index_to_carId(int index) const {
     // Car (elevator) IDs are integers incrementing from 1.
     // Lowest index is lowest car ID.
-    if (index + 1 > elevatorCount || index < 0) {
-        throw "ERROR: building table carId (col) index out of bounds";
-    }
+    validateElevatorDataIndex(index);
     return index + 1;  // car ID
 }
 
+bool Building::isFloorDataIndex(int index) const {
+    return (index >= 0 && index <= floorCount - 1);
+}
+bool Building::isElevatorDataIndex(int index) const {
+    return (index >= 0 && index <= elevatorCount - 1);
+}
+void Building::validateFloorDataIndex(int index) const {
+    if (!isFloorDataIndex(index))
+        throw "ERROR: Floor (row) index out of data bounds";
+}
+void Building::validateElevatorDataIndex(int index) const {
+    if (!isElevatorDataIndex(index))
+        throw "ERROR: Elevator carId (col) index out of data bounds";
+}
+
 FloorData *Building::getFloor_byIndex(int index) {
-    return indexFloorMap[index];
+    validateFloorDataIndex(index);
+    if (!index_floorNum_Map.contains(index))
+        throw "ERROR: Nonexistent index to number mapping";
+    return getFloor_byFloorNum(index_floorNum_Map[index]);
 }
 FloorData *Building::getFloor_byFloorNum(int floorNum) {
-    return indexFloorMap[floorNum_toIndexMap[floorNum]];
+    if (!floorNum_FloorData_Map.contains(floorNum))
+        throw "ERROR: Floor number trying to be accessed doesn't exist";
+    return floorNum_FloorData_Map[floorNum];
 }
+
 ElevatorData *Building::getElevator_byIndex(int index) {
-    return indexElevatorMap[index];
+    validateElevatorDataIndex(index);
+    if (!index_carId_Map.contains(index))
+        throw "ERROR: Nonexistent index to carId mapping";
+    return getElevator_byCarId(index_carId_Map[index]);
 }
 ElevatorData *Building::getElevator_byCarId(int carId) {
-    return indexElevatorMap[carId_toIndexMap[carId]];
+    if (!carId_ElevatorData_Map.contains(carId))
+        throw "ERROR: Elevator trying to be accessed doesn't exist";
+    return carId_ElevatorData_Map[carId];
 }
 
 const ElevatorData *Building::getElevator_byIndex(int index) const {
-    return indexElevatorMap[index];
+    validateElevatorDataIndex(index);
+    if (!index_carId_Map.contains(index))
+        throw "ERROR: Nonexistent index to carId mapping";
+    int carId = index_carId_Map[index];
+
+    if (!carId_ElevatorData_Map.contains(carId))
+        throw "ERROR: Elevator trying to be accessed doesn't exist";
+    return carId_ElevatorData_Map[carId];
 }

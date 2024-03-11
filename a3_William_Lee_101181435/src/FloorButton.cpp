@@ -25,6 +25,9 @@ FloorButton::FloorButton(int f, Direction d, bool c, QString objectName,
     updateStyleSheet();
 
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    connect(this, &FloorButton::pressed, this,
+            [this]() { this->flipChecked(); });
 }
 
 bool FloorButton::isChecked() const { return checked; }
@@ -33,6 +36,7 @@ void FloorButton::setChecked(bool newState) {
     if (checked != newState) {
         checked = newState;
         updateStyleSheet();
+        emit buttonCheckedChanged();
     }
 }
 

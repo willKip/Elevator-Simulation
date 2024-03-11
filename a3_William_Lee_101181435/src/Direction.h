@@ -3,7 +3,7 @@
 
 #include <QHash>
 
-enum class Direction { UP, DOWN };
+enum class Direction { NONE, UP, DOWN };
 
 // Hash function needed to use as key in Qt map containers
 inline uint qHash(Direction key, uint seed) {
