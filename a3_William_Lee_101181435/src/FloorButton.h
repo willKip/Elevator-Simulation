@@ -3,45 +3,27 @@
 
 #include <QObject>
 #include <QPushButton>
-#include <QString>
 
+#include "DataButton.h"
 #include "Direction.h"
 
-/**
- * Custom subclass of QPushButton that can appear to be checkable, but instead
- * fires a signal to the underlying data structure and reflects the appropriate
- * state. For this, it ignores the default "checked" state of QPushButton and
- * implements its own.
- */
 // TODO: documentation
-class FloorButton : public QPushButton {
+class FloorButton : public DataButton {
     Q_OBJECT
 
    public:
-    FloorButton(int floorNum, Direction direction, bool initialChecked = false,
-                QString objectName = "", QWidget *parent = nullptr);
-
-    bool isChecked() const;  // Return current checked state
-    void setChecked(bool);   // Set checked to given bool
-    void flipChecked();      // Invert current checked state
-
-   signals:
-    void buttonCheckedChanged();
+    explicit FloorButton(int floorNum, Direction direction,
+                         bool initialChecked = false, QString objectName = "",
+                         QWidget *parent = nullptr);
 
    private:
-    /**
-     * Qt Style Sheet strings for styling the buttons' checked and unchecked
-     * states.
-     */
-    static const QString checkedStyleSheetStr;
-    static const QString unCheckedStyleSheetStr;
-
     const int floorNum;
     const Direction direction;
-    bool checked;
 
     // Provide mapping of Direction enum to text for the button label.
     QString directionToLabelText() const;
-    void updateStyleSheet();
+
+    // Override of base DataButton styling
+    void updateStyleSheet() override;
 };
 #endif /* FLOORBUTTON_H */

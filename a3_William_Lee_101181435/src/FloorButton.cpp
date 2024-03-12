@@ -8,39 +8,11 @@
 #include "Building.h"
 #include "Direction.h"
 
-// Static definitions
-const QString FloorButton::checkedStyleSheetStr =
-    "background-color: rgba(10, 0, 135, 60%);"
-    "color: rgb(255,255,255);";
-const QString FloorButton::unCheckedStyleSheetStr = "";
-
 FloorButton::FloorButton(int f, Direction d, bool c, QString objectName,
                          QWidget *parent)
-    : QPushButton(parent), floorNum(f), direction(d), checked(c) {
-    if (!objectName.isEmpty()) setObjectName(objectName);
-
+    : DataButton(c, objectName, parent), floorNum(f), direction(d) {
     setText(directionToLabelText());
-
-    // Set style for initial button state
-    updateStyleSheet();
-
-    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-
-    connect(this, &FloorButton::pressed, this,
-            [this]() { this->flipChecked(); });
 }
-
-bool FloorButton::isChecked() const { return checked; }
-
-void FloorButton::setChecked(bool newState) {
-    if (checked != newState) {
-        checked = newState;
-        updateStyleSheet();
-        emit buttonCheckedChanged();
-    }
-}
-
-void FloorButton::flipChecked() { setChecked(!checked); }
 
 QString FloorButton::directionToLabelText() const {
     switch (direction) {
@@ -55,9 +27,4 @@ QString FloorButton::directionToLabelText() const {
     }
 }
 
-void FloorButton::updateStyleSheet() {
-    if (checked)
-        setStyleSheet(checkedStyleSheetStr);
-    else
-        setStyleSheet(unCheckedStyleSheetStr);
-}
+void FloorButton::updateStyleSheet() { DataButton::updateStyleSheet(); }
