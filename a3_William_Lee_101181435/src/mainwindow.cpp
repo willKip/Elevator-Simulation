@@ -35,15 +35,12 @@ MainWindow::MainWindow(QWidget *parent)
     /**
      * Initialize and add buttons for each floor in the building UI.
      */
-    QWidget *floorButtonContainer;
-    QVBoxLayout *floorButtonLayout;
-
     for (int f = 0; f < FLOOR_COUNT; ++f) {
         // Container widget
-        floorButtonContainer = new QWidget;
+        QWidget *floorButtonContainer = new QWidget;
 
         // Set layout on the container
-        floorButtonLayout = new QVBoxLayout(floorButtonContainer);
+        QHBoxLayout *floorButtonLayout = new QHBoxLayout(floorButtonContainer);
         floorButtonLayout->setSpacing(0);
         floorButtonLayout->setContentsMargins(0, 0, 0, 0);
 
