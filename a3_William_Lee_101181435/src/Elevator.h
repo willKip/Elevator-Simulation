@@ -9,6 +9,8 @@
 #include <QStateMachine>
 #include <QString>
 
+class Building;
+
 /**
  * Store and compute elevator movement and state.
  * They exist as part of Building classes.
@@ -30,7 +32,7 @@ class Elevator : public QObject {
         HELP
     };
 
-    Elevator(int carId, QObject *parent = nullptr);
+    Elevator(int carId, Building *parentBuilding, QObject *parent = nullptr);
 
     // Unique ID given to each elevator within a building.
     const int carId;
@@ -39,6 +41,9 @@ class Elevator : public QObject {
 
     // Return a string representing the elevator's status.
     QString getElevatorString() const;
+
+    // Return true if the elevator is currently moving.
+    bool isMoving();
 
    signals:
     // Fired only when an elevator's movement state has changed from before.
@@ -53,6 +58,8 @@ class Elevator : public QObject {
     void determineMovement();
 
    private:
+    Building *parentBuilding;
+
     // Ordered FIFO queue of floors selected on the floor panel.
     QQueue<int> pressedFloors;
 
@@ -61,19 +68,22 @@ class Elevator : public QObject {
     EmergencyState emergencyState;
 
     // Timer simulating how fast the elevator's doors close or open.
-    QTimer *const doorTimer;
+    QTimer *const doorSpeedTimer;
 
     // Timer for doors to stay open before automatically closing.
-    QTimer *const doorTimeoutTimer;
+    QTimer *const doorWaitTimer;
 
     // How long it takes for a door to fully close, in milliseconds.
-    static const int doorMs = 3000;
+    static const int doorSpeedMs = 2000;
     // How long it takes before an open door will close itself.
-    static const int doorTimeoutMs = 10000;
+    static const int doorWaitMs = 3000;
 
     // Update elevator movement state, broadcast change if it is different from
     // before.
     void updateMovementState(MovementState);
+
+    void openDoors();
+    void closeDoors();
 
     // TODO: current text message and audio
     // TODO: If current floor has queue, stop and open for it.

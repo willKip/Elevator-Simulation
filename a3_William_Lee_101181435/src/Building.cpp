@@ -21,7 +21,7 @@ ElevatorData::ElevatorData(int index, int carId, int initFloorNum,
       index(index),
       carId(carId),
       currentFloorNum(initFloorNum),
-      obj(new Elevator(carId, this)),
+      obj(new Elevator(carId, parentBuilding, this)),
       parentBuilding(parentBuilding),
       movementTimer(new QTimer(this)) {
     // Set up timer
@@ -35,7 +35,7 @@ ElevatorData::ElevatorData(int index, int carId, int initFloorNum,
     connect(obj, &Elevator::elevatorMovementChanged, this,
             &ElevatorData::receiveElevatorMovement);
 
-    // TODO: handle arrived differently
+    // TODO: handle arrival signal
     connect(obj, &Elevator::elevatorArrived, this,
             &ElevatorData::receiveElevatorMovement);
 
