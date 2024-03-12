@@ -38,11 +38,14 @@ class ElevatorData : public QObject {
     const int carId;      // Unique elevator car ID within a Building
     int currentFloorNum;  // Current floor of the elevator
 
-    // Invoked when movement timer expires, reflects movement on building.
+    // Invoked when movement timer expires, applies movement in the building
     void moveElevator();
 
     // Return display string for elevator data
     const QString getDisplayString() const;
+
+   public slots:
+    void receiveElevatorMovement();
 
    private:
     // Pointer to Elevator object
@@ -54,13 +57,8 @@ class ElevatorData : public QObject {
     // Movement timer for each elevator, simulates moving speed.
     QTimer *const movementTimer;
 
-    // Timer for door opening and closing.
-    QTimer *const doorTimer;
-
     // How long it takes for an elevator to reach a new floor in the simulation.
     static const int movementMs = 1000;
-    // How long it takes for a door to fully close, in milliseconds.
-    static const int doorMs = 3000;
 };
 
 // TODO: documentation

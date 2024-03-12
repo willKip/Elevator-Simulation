@@ -23,41 +23,54 @@ ElevatorData::ElevatorData(int index, int carId, int initFloorNum,
       currentFloorNum(initFloorNum),
       obj(new Elevator(carId, this)),
       parentBuilding(parentBuilding),
-      movementTimer(new QTimer(this)),
-      doorTimer(new QTimer(this)) {
-    movementTimer->setInterval(movementMs);  // Set up timer
+      movementTimer(new QTimer(this)) {
+    // Set up timer
+    movementTimer->setInterval(movementMs);
 
     // Inform elevator when parent building's data changes
     connect(parentBuilding, &Building::buildingDataChanged, obj,
             &Elevator::determineMovement);
 
     // Initiate elevator movement when elevator informs of state change
-    connect(obj, &Elevator::elevatorMoving, this, [this]() {
-        this->parentBuilding->updateColumn(this->index);
-        this->movementTimer->start();
-    });
+    connect(obj, &Elevator::elevatorMovementChanged, this,
+            &ElevatorData::receiveElevatorMovement);
 
-    // Stop elevator movement when elevator informs of arrival at destination
-    connect(obj, &Elevator::elevatorArrived, this, [this]() {
-        this->parentBuilding->updateColumn(this->index);
-        this->movementTimer->stop();
-    });
-
-    // Turn off floor's buttons since elevator arrived at floor.
-    // TODO: should turn off both if elevator has no panel buttons pressed
-    // todo: otherwise it is making a stop at the floor and resuming, disable
-    // todo: only the button along the direction of the elevator's movement.
-    connect(obj, &Elevator::elevatorArrived, this, [this]() {
-        this->parentBuilding->getFloor_byFloorNum(this->currentFloorNum)
-            ->resetButtons();
-    });
+    // TODO: handle arrived differently
+    connect(obj, &Elevator::elevatorArrived, this,
+            &ElevatorData::receiveElevatorMovement);
 
     // If the movement timer completes without interruption, move the elevator.
     connect(movementTimer, &QTimer::timeout, this, &ElevatorData::moveElevator);
 }
 
+void ElevatorData::receiveElevatorMovement() {
+    switch (obj->getMovementState()) {
+        case Elevator::MovementState::UPWARDS:
+        case Elevator::MovementState::DOWNWARDS:
+            // This slot's corresponding signal only fires when movement state
+            // has changed: thus this correctly resets the timer if elevator
+            // changes from e.g. moving up -> moving down.
+            this->movementTimer->start();
+            this->parentBuilding->updateColumn(this->index);
+            break;
+        case Elevator::MovementState::STOPPED:
+            this->movementTimer->stop();
+            this->parentBuilding->updateColumn(this->index);
+            // Turn off floor's buttons since elevator arrived at floor.
+            // TODO: should turn off both if elevator has no panel buttons
+            // pressed todo: otherwise it is making a stop at the floor and
+            // resuming, disable todo: only the button along the direction of
+            // the elevator's movement.
+            this->parentBuilding->getFloor_byFloorNum(this->currentFloorNum)
+                ->resetButtons();
+            break;
+        default:
+            break;
+    }
+}
+
 void ElevatorData::moveElevator() {
-    switch (obj->currentMovement) {
+    switch (obj->getMovementState()) {
         case Elevator::MovementState::UPWARDS:
             parentBuilding->placeElevator(carId, currentFloorNum + 1);
             break;
