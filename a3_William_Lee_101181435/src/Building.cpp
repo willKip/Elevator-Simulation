@@ -21,9 +21,10 @@ ElevatorData::ElevatorData(int index, int carId, int initFloorNum,
       index(index),
       carId(carId),
       currentFloorNum(initFloorNum),
-      obj(new Elevator(carId, parentBuilding)),
-      movementTimer(new QTimer(parentBuilding)),
-      parentBuilding(parentBuilding) {
+      obj(new Elevator(carId, this)),
+      parentBuilding(parentBuilding),
+      movementTimer(new QTimer(this)),
+      doorTimer(new QTimer(this)) {
     movementTimer->setInterval(movementMs);  // Set up timer
 
     // Inform elevator when parent building's data changes
@@ -68,16 +69,20 @@ void ElevatorData::moveElevator() {
     }
 }
 
+const QString ElevatorData::getDisplayString() const {
+    return obj->getElevatorString();
+}
+
 FloorData::FloorData(int i, int fn, Building *parentBuilding, QObject *parent)
     : QObject(parent),
       index(i),
       floorNumber(fn),
-      parentBuilding(parentBuilding),
       upButton(new FloorButton(floorNumber, Direction::UP, false,
                                QString("floor%1UpButton").arg(floorNumber))),
       downButton(
           new FloorButton(floorNumber, Direction::DOWN, false,
-                          QString("floor%1DownButton").arg(floorNumber))) {
+                          QString("floor%1DownButton").arg(floorNumber))),
+      parentBuilding(parentBuilding) {
     // Disable buttons appropriately at the very top or bottom floor.
     if (index == 0)
         upButton->setDisabled(true);  // Top floor
@@ -89,6 +94,7 @@ FloorData::FloorData(int i, int fn, Building *parentBuilding, QObject *parent)
     connect(downButton, &FloorButton::buttonCheckedChanged, parentBuilding,
             &Building::buildingDataChanged);
 };
+
 bool FloorData::pressedUp() const { return upButton->isChecked(); }
 bool FloorData::pressedDown() const { return downButton->isChecked(); }
 void FloorData::resetButtons() {
@@ -100,8 +106,8 @@ Building::Building(int f, int e, int ar, int ac, QObject *parent)
     : QAbstractTableModel(parent),
       floorCount(f),
       elevatorCount(e),
-      buttonRowCount(ar),
-      buttonColCount(ac) {
+      rowButtonCount(ar),
+      colButtonCount(ac) {
     for (int f_ind = 0; f_ind < floorCount; ++f_ind) {
         // Initialize floors (connection to UI buttons done after in MainWindow)
 
@@ -175,11 +181,11 @@ void Building::updateColumn(int col) {
 }
 
 int Building::rowCount(const QModelIndex & /*parent*/) const {
-    return floorCount + buttonRowCount;  // Add rows used for buttons.
+    return floorCount + rowButtonCount;  // Add rows used for buttons.
 }
 
 int Building::columnCount(const QModelIndex & /*parent*/) const {
-    return elevatorCount + buttonColCount;  // Add columns used for buttons.
+    return elevatorCount + colButtonCount;  // Add columns used for buttons.
 }
 
 QVariant Building::data(const QModelIndex &index, int role) const {
@@ -194,7 +200,7 @@ QVariant Building::data(const QModelIndex &index, int role) const {
             switch (role) {
                 case Qt::DisplayRole:
                     // Key data, rendered as text
-                    return ed->obj->getElevatorString();
+                    return ed->getDisplayString();
                     break;
                 case Qt::BackgroundRole:
                     // Background brush

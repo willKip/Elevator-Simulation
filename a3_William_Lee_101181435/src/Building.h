@@ -38,6 +38,13 @@ class ElevatorData : public QObject {
     const int carId;      // Unique elevator car ID within a Building
     int currentFloorNum;  // Current floor of the elevator
 
+    // Invoked when movement timer expires, reflects movement on building.
+    void moveElevator();
+
+    // Return display string for elevator data
+    const QString getDisplayString() const;
+
+   private:
     // Pointer to Elevator object
     Elevator *const obj;
 
@@ -47,12 +54,13 @@ class ElevatorData : public QObject {
     // Movement timer for each elevator, simulates moving speed.
     QTimer *const movementTimer;
 
-    // Invoked when movement timer expires, reflects movement on building.
-    void moveElevator();
+    // Timer for door opening and closing.
+    QTimer *const doorTimer;
 
-   private:
     // How long it takes for an elevator to reach a new floor in the simulation.
     static const int movementMs = 1000;
+    // How long it takes for a door to fully close, in milliseconds.
+    static const int doorMs = 3000;
 };
 
 // TODO: documentation
@@ -62,11 +70,11 @@ class FloorData : public QObject {
     FloorData(int index, int floorNumber, Building *parentBuilding,
               QObject *parent = nullptr);
 
-    const int index;                 // Data index within a Building
-    const int floorNumber;           // Unique floor number within a Building
-    Building *const parentBuilding;  // Pointer to Building FloorData belongs to
+    const int index;        // Data index within a Building
+    const int floorNumber;  // Unique floor number within a Building
 
-    // Directional buttons of the floor
+    // Directional buttons of the floor. Public so that they can be accessed for
+    // adding to the UI.
     FloorButton *const upButton;
     FloorButton *const downButton;
 
@@ -76,6 +84,9 @@ class FloorData : public QObject {
 
     // Set all buttons of the floor to unchecked
     void resetButtons();
+
+   private:
+    Building *const parentBuilding;  // Pointer to Building FloorData belongs to
 };
 
 /**
@@ -97,15 +108,15 @@ class Building : public QAbstractTableModel {
    public:
     enum class EmergencyState { FIRE, POWER_OUT };
 
-    Building(int floorCount, int elevatorCount, int buttonRowCount = 0,
-             int buttonColCount = 0, QObject *parent = nullptr);
+    Building(int floorCount, int elevatorCount, int rowButtonCount = 0,
+             int colButtonCount = 0, QObject *parent = nullptr);
 
     const int floorCount;     // Each floor gets a row
     const int elevatorCount;  // Each elevator gets a column
 
     // Additional non-data rows and columns allocated for buttons.
-    const int buttonRowCount;
-    const int buttonColCount;
+    const int rowButtonCount;
+    const int colButtonCount;
 
     // Implement virtual functions from QAbstractTableModel
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
