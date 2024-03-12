@@ -9,6 +9,8 @@
  * instead fires a signal to the underlying data structure and reflects the
  * appropriate state. For this, it ignores the default "checked" state of
  * QPushButton and implements its own.
+ * Additionally, it can be pressed and held to continuously emit the pressed
+ * signal.
  */
 // TODO: documentation
 class DataButton : public QPushButton {
@@ -29,6 +31,9 @@ class DataButton : public QPushButton {
     void buttonCheckedChanged();
 
    protected:
+    // Interval for emitting pressed signal repeatedly when held down
+    static const int autoRepeatMs;
+
     bool checked;
 
     // Default provided, but can be overridden by subclasses to specify styling

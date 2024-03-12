@@ -5,18 +5,28 @@
 #include <QSizePolicy>
 #include <QString>
 
+// Static initialization
+const int DataButton::autoRepeatMs = 1000;  // 1 second
+
 DataButton::DataButton(bool c, QString objectName, QWidget *parent)
     : QPushButton(parent), checked(c) {
     // Set Qt button object name
     if (!objectName.isEmpty()) setObjectName(objectName);
 
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
     // Set style for initial button state
     updateStyleSheet();
 
-    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-
     connect(this, &DataButton::pressed, this,
             [this]() { this->flipChecked(); });
+
+    // Set up button pressed and held behaviour
+    setAutoRepeat(true);
+    setAutoRepeatDelay(autoRepeatMs);
+    setAutoRepeatInterval(autoRepeatMs);
+    connect(this, &DataButton::released, this,
+            [this]() { this->updateStyleSheet(); });
 }
 
 bool DataButton::isChecked() const { return checked; }
@@ -41,7 +51,8 @@ void DataButton::updateStyleSheet() {
         "color: rgb(255,255,255);";
     const QString unCheckedStyleSheetStr = "";
 
-    if (checked)
+    // If the button is currently being held down, style it as if checked.
+    if (checked || isDown())
         setStyleSheet(checkedStyleSheetStr);
     else
         setStyleSheet(unCheckedStyleSheetStr);
