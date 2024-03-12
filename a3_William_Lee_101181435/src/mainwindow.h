@@ -38,7 +38,6 @@ class MainWindow : public QMainWindow {
     // Length of each time chunk in the simulation, in milliseconds.
     static const int UPDATE_INTERVAL_MS = 1000;
 
-    int timeCount;
     QTimer *updateTimer;
 
     bool buttonPressed;  // TODO: temp
@@ -47,7 +46,6 @@ class MainWindow : public QMainWindow {
     QTableView *buildingView;
 
    private slots:
-    void updateUi();
     void testFunction();
     void inlineConsoleDisplay(const QString &text);
 };

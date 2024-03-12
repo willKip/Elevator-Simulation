@@ -15,52 +15,14 @@
 #include "Direction.h"
 #include "FloorButton.h"
 
-class Elevator;  // Forward declare Elevator class
-
-// Helper data classes for better management of associated data
-class ElevatorData;
+// Forward declarations
+class Elevator;
 class FloorData;
 
 // Main class
 class Building;
 
-// TODO documentation
-/**
- * Class designed to couple elevator-related data on the building side.
- */
-class ElevatorData : public QObject {
-    Q_OBJECT
-   public:
-    ElevatorData(int index, int carId, int initFloorNum,
-                 Building *parentBuilding, QObject *parent = nullptr);
-
-    const int index;      // Data index within a Building
-    const int carId;      // Unique elevator car ID within a Building
-    int currentFloorNum;  // Current floor of the elevator
-
-    // Invoked when movement timer expires, applies movement in the building
-    void moveElevator();
-
-    // Return display string for elevator data
-    const QString getDisplayString() const;
-
-   public slots:
-    void receiveElevatorMovement();
-
-   private:
-    // Pointer to Elevator object
-    Elevator *const obj;
-
-    // Pointer to Building ElevatorData belongs to
-    Building *const parentBuilding;
-
-    // Movement timer for each elevator, simulates moving speed.
-    QTimer *const movementTimer;
-
-    // How long it takes for an elevator to reach a new floor in the simulation.
-    static const int movementMs = 1000;
-};
-
+// Helper data class for better management of associated data
 // TODO: documentation
 class FloorData : public QObject {
     Q_OBJECT
@@ -126,8 +88,8 @@ class Building : public QAbstractTableModel {
     // Access methods for floor and elevator data
     FloorData *getFloor_byIndex(int index);
     FloorData *getFloor_byFloorNum(int floorNum);
-    ElevatorData *getElevator_byIndex(int index);
-    ElevatorData *getElevator_byCarId(int carId);
+    Elevator *getElevator_byIndex(int index);
+    Elevator *getElevator_byCarId(int carId);
 
     // Get an ascending list of floor numbers where the floors have pressed
     // buttons (pending elevator requests). If a direction is specified, return
@@ -154,23 +116,23 @@ class Building : public QAbstractTableModel {
     int index_to_floorNum(int index) const;
     int index_to_carId(int index) const;
     // Const access method for data function use
-    const ElevatorData *getElevator_byIndex(int index) const;
+    const Elevator *getElevator_byIndex(int index) const;
 
     // Returns true if index accesses are on the floor/elevator data.
     bool isFloorDataIndex(int index) const;
-    bool isElevatorDataIndex(int index) const;
+    bool isElevatorIndex(int index) const;
 
     // Throws exception if index access would be outside the floor/elevator data
     // range.
     void validateFloorDataIndex(int index) const;
-    void validateElevatorDataIndex(int index) const;
+    void validateElevatorIndex(int index) const;
 
     /**
      * Ascending order mappings of floor numbers and elevator IDs to
      * corresponding floor and elevator data classes.
      */
     QMap<int, FloorData *> floorNum_FloorData_Map;
-    QMap<int, ElevatorData *> carId_ElevatorData_Map;
+    QMap<int, Elevator *> carId_Elevator_Map;
 
     // Maps of building object table indices to floor numbers and elevator IDs.
     QHash<int, int> index_floorNum_Map;

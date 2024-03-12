@@ -32,22 +32,22 @@ class Elevator : public QObject {
         HELP
     };
 
-    Elevator(int carId, Building *parentBuilding, QObject *parent = nullptr);
+    Elevator(int buildingColIndex, int carId, int initialFloorNum,
+             Building *parentBuilding, QObject *parent = nullptr);
 
-    // Unique ID given to each elevator within a building.
-    const int carId;
-
-    MovementState getMovementState() const;
+    const int buildingColIndex;  // Data index within a Building
+    const int carId;             // Unique elevator car ID within a Building
+    int currentFloorNum;         // Current floor of the elevator
 
     // Return a string representing the elevator's status.
-    QString getElevatorString() const;
+    const QString getElevatorString() const;
 
     // Return true if the elevator is currently moving.
-    bool isMoving();
+    bool isMoving() const;
 
    signals:
-    // Fired only when an elevator's movement state has changed from before.
-    void elevatorMovementChanged();
+    // Fired when an aspect of the elevator has changed.
+    void elevatorDataChanged(int index);
 
    signals:
     // Fired when an elevator arrives at a destination.
@@ -58,7 +58,8 @@ class Elevator : public QObject {
     void determineMovement();
 
    private:
-    Building *parentBuilding;
+    // Pointer to Building Elevator exists in
+    Building *const parentBuilding;
 
     // Ordered FIFO queue of floors selected on the floor panel.
     QQueue<int> pressedFloors;
@@ -67,23 +68,36 @@ class Elevator : public QObject {
     DoorState doorState;
     EmergencyState emergencyState;
 
+    // Movement timer for each elevator, simulates moving speed.
     // Timer simulating how fast the elevator's doors close or open.
-    QTimer *const doorSpeedTimer;
-
     // Timer for doors to stay open before automatically closing.
+
+    /**
+     * Timers and their interval definitions
+     */
+    QTimer *const movementTimer;
+    QTimer *const doorSpeedTimer;
     QTimer *const doorWaitTimer;
 
-    // How long it takes for a door to fully close, in milliseconds.
+    // How long it takes for an elevator to reach a new floor in the simulation
+    static const int movementMs = 1000;
+    // How long it takes for a door to fully close
     static const int doorSpeedMs = 2000;
-    // How long it takes before an open door will close itself.
+    // How long it takes before an open door will close itself
     static const int doorWaitMs = 3000;
 
-    // Update elevator movement state, broadcast change if it is different from
-    // before.
-    void updateMovementState(MovementState);
+    // Private setters to emit signals appropriately upon data change
+    void setMovement(MovementState);
+    void setDoorState(DoorState);
+
+    void moveElevator();
 
     void openDoors();
     void closeDoors();
+
+    // From a given nonempty list of floors, returns the number of the ideal
+    // next floor to visit.
+    int closestQueuedFloor(const QVector<int> &floors) const;
 
     // TODO: current text message and audio
     // TODO: If current floor has queue, stop and open for it.

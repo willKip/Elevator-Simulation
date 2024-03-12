@@ -15,77 +15,6 @@
 #include "Elevator.h"
 #include "FloorButton.h"
 
-ElevatorData::ElevatorData(int index, int carId, int initFloorNum,
-                           Building *parentBuilding, QObject *parent)
-    : QObject(parent),
-      index(index),
-      carId(carId),
-      currentFloorNum(initFloorNum),
-      obj(new Elevator(carId, parentBuilding, this)),
-      parentBuilding(parentBuilding),
-      movementTimer(new QTimer(this)) {
-    // Set up timer
-    movementTimer->setInterval(movementMs);
-
-    // Inform elevator when parent building's data changes
-    connect(parentBuilding, &Building::buildingDataChanged, obj,
-            &Elevator::determineMovement);
-
-    // Initiate elevator movement when elevator informs of state change
-    connect(obj, &Elevator::elevatorMovementChanged, this,
-            &ElevatorData::receiveElevatorMovement);
-
-    // TODO: handle arrival signal
-    connect(obj, &Elevator::elevatorArrived, this,
-            &ElevatorData::receiveElevatorMovement);
-
-    // If the movement timer completes without interruption, move the elevator.
-    connect(movementTimer, &QTimer::timeout, this, &ElevatorData::moveElevator);
-}
-
-void ElevatorData::receiveElevatorMovement() {
-    switch (obj->getMovementState()) {
-        case Elevator::MovementState::UPWARDS:
-        case Elevator::MovementState::DOWNWARDS:
-            // This slot's corresponding signal only fires when movement state
-            // has changed: thus this correctly resets the timer if elevator
-            // changes from e.g. moving up -> moving down.
-            this->movementTimer->start();
-            this->parentBuilding->updateColumn(this->index);
-            break;
-        case Elevator::MovementState::STOPPED:
-            this->movementTimer->stop();
-            this->parentBuilding->updateColumn(this->index);
-            // Turn off floor's buttons since elevator arrived at floor.
-            // TODO: should turn off both if elevator has no panel buttons
-            // pressed todo: otherwise it is making a stop at the floor and
-            // resuming, disable todo: only the button along the direction of
-            // the elevator's movement.
-            this->parentBuilding->getFloor_byFloorNum(this->currentFloorNum)
-                ->resetButtons();
-            break;
-        default:
-            break;
-    }
-}
-
-void ElevatorData::moveElevator() {
-    switch (obj->getMovementState()) {
-        case Elevator::MovementState::UPWARDS:
-            parentBuilding->placeElevator(carId, currentFloorNum + 1);
-            break;
-        case Elevator::MovementState::DOWNWARDS:
-            parentBuilding->placeElevator(carId, currentFloorNum - 1);
-            break;
-        default:
-            break;
-    }
-}
-
-const QString ElevatorData::getDisplayString() const {
-    return obj->getElevatorString();
-}
-
 FloorData::FloorData(int i, int fn, Building *parentBuilding, QObject *parent)
     : QObject(parent),
       index(i),
@@ -142,8 +71,13 @@ Building::Building(int f, int e, int ar, int ac, QObject *parent)
 
         index_carId_Map.insert(e_ind, carId);
 
-        carId_ElevatorData_Map.insert(
-            carId, new ElevatorData(e_ind, carId, initFloorNum, this, this));
+        Elevator *newElevator =
+            new Elevator(e_ind, carId, initFloorNum, this, this);
+
+        connect(newElevator, &Elevator::elevatorDataChanged, this,
+                &Building::updateColumn);
+
+        carId_Elevator_Map.insert(carId, newElevator);
     }
 }
 
@@ -173,23 +107,23 @@ int Building::placeElevator(int carId, int newFloorNum) {
     if (!floorNum_FloorData_Map.contains(newFloorNum))
         throw "Error: Elevator attempted invalid movement!";
 
-    ElevatorData *elevatorData = getElevator_byCarId(carId);
+    Elevator *elevator = getElevator_byCarId(carId);
 
-    int prevFloorNum = elevatorData->currentFloorNum;
+    int prevFloorNum = elevator->currentFloorNum;
 
     if (prevFloorNum != newFloorNum) {
-        elevatorData->currentFloorNum = newFloorNum;
-
-        emit buildingDataChanged();
+        elevator->currentFloorNum = newFloorNum;
 
         // Inform view to update the moved elevator's column
-        updateColumn(elevatorData->index);
+        updateColumn(elevator->buildingColIndex);
     }
 
     return prevFloorNum;
 }
 
 void Building::updateColumn(int col) {
+    emit buildingDataChanged();
+
     emit dataChanged(index(0, col), index(floorCount, col));
 }
 
@@ -206,14 +140,14 @@ QVariant Building::data(const QModelIndex &index, int role) const {
     int col = index.column();
 
     // Only access data for rows and columns not reserved for button placement.
-    if (isFloorDataIndex(row) && isElevatorDataIndex(col)) {
-        const ElevatorData *ed = getElevator_byIndex(col);
+    if (isFloorDataIndex(row) && isElevatorIndex(col)) {
+        const Elevator *elevator = getElevator_byIndex(col);
 
-        if (index_to_floorNum(row) == ed->currentFloorNum) {
+        if (index_to_floorNum(row) == elevator->currentFloorNum) {
             switch (role) {
                 case Qt::DisplayRole:
                     // Key data, rendered as text
-                    return ed->getDisplayString();
+                    return elevator->getElevatorString();
                     break;
                 case Qt::BackgroundRole:
                     // Background brush
@@ -239,7 +173,7 @@ QVariant Building::headerData(int section, Qt::Orientation orientation,
     if (role == Qt::DisplayRole) {
         switch (orientation) {
             case Qt::Horizontal:
-                if (isElevatorDataIndex(section))
+                if (isElevatorIndex(section))
                     return QString("Elevator %1").arg(index_carId_Map[section]);
                 break;
             case Qt::Vertical:
@@ -260,22 +194,22 @@ int Building::index_to_floorNum(int index) const {
 int Building::index_to_carId(int index) const {
     // Car (elevator) IDs are integers incrementing from 1.
     // Lowest index is lowest car ID.
-    validateElevatorDataIndex(index);
+    validateElevatorIndex(index);
     return index + 1;  // car ID
 }
 
 bool Building::isFloorDataIndex(int index) const {
     return (index >= 0 && index <= floorCount - 1);
 }
-bool Building::isElevatorDataIndex(int index) const {
+bool Building::isElevatorIndex(int index) const {
     return (index >= 0 && index <= elevatorCount - 1);
 }
 void Building::validateFloorDataIndex(int index) const {
     if (!isFloorDataIndex(index))
         throw "ERROR: Floor (row) index out of data bounds";
 }
-void Building::validateElevatorDataIndex(int index) const {
-    if (!isElevatorDataIndex(index))
+void Building::validateElevatorIndex(int index) const {
+    if (!isElevatorIndex(index))
         throw "ERROR: Elevator carId (col) index out of data bounds";
 }
 
@@ -291,25 +225,25 @@ FloorData *Building::getFloor_byFloorNum(int floorNum) {
     return floorNum_FloorData_Map[floorNum];
 }
 
-ElevatorData *Building::getElevator_byIndex(int index) {
-    validateElevatorDataIndex(index);
+Elevator *Building::getElevator_byIndex(int index) {
+    validateElevatorIndex(index);
     if (!index_carId_Map.contains(index))
         throw "ERROR: Nonexistent index to carId mapping";
     return getElevator_byCarId(index_carId_Map[index]);
 }
-ElevatorData *Building::getElevator_byCarId(int carId) {
-    if (!carId_ElevatorData_Map.contains(carId))
+Elevator *Building::getElevator_byCarId(int carId) {
+    if (!carId_Elevator_Map.contains(carId))
         throw "ERROR: Elevator trying to be accessed doesn't exist";
-    return carId_ElevatorData_Map[carId];
+    return carId_Elevator_Map[carId];
 }
 
-const ElevatorData *Building::getElevator_byIndex(int index) const {
-    validateElevatorDataIndex(index);
+const Elevator *Building::getElevator_byIndex(int index) const {
+    validateElevatorIndex(index);
     if (!index_carId_Map.contains(index))
         throw "ERROR: Nonexistent index to carId mapping";
     int carId = index_carId_Map[index];
 
-    if (!carId_ElevatorData_Map.contains(carId))
+    if (!carId_Elevator_Map.contains(carId))
         throw "ERROR: Elevator trying to be accessed doesn't exist";
-    return carId_ElevatorData_Map[carId];
+    return carId_Elevator_Map[carId];
 }

@@ -10,18 +10,14 @@
 #include <QVBoxLayout>
 
 #include "Building.h"
-#include "Direction.h"
-#include "FloorButton.h"
 #include "ui_mainwindow.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
 
+    // TODO: remove
     connect(ui->testButton, SIGNAL(released()), this, SLOT(testFunction()));
-
-    // Initialize number of iterations since simulation started.
-    timeCount = 0;
 
     // Initialize building data model.
     buildingModel = new Building(FLOOR_COUNT, ELEVATOR_COUNT, 3, 1);
@@ -61,29 +57,11 @@ MainWindow::MainWindow(QWidget *parent)
     }
 
     buttonPressed = false;
-
-    // Update view
-    // updateTimer = new QTimer(this);
-    // connect(updateTimer, SIGNAL(timeout()), this, SLOT(updateUi()));
-    // updateTimer->start(UPDATE_INTERVAL_MS);
 }
 
 MainWindow::~MainWindow() {
     delete ui;
     delete updateTimer;
-}
-
-void MainWindow::updateUi() {
-    inlineConsoleDisplay(QString("Iteration [%1]").arg(timeCount));
-
-    if (buttonPressed) {
-        inlineConsoleDisplay("Button was pressed this iteration.");
-        buttonPressed = false;
-    } else {
-        inlineConsoleDisplay("NOT pressed.");
-    }
-
-    timeCount += 1;  // TODO: shouldn't be in the "ui update function"
 }
 
 void MainWindow::testFunction() {
