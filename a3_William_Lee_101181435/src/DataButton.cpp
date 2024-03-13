@@ -1,5 +1,6 @@
 #include "DataButton.h"
 
+#include <QDebug>
 #include <QObject>
 #include <QPushButton>
 #include <QSizePolicy>
@@ -8,7 +9,8 @@
 // Static initialization
 const int DataButton::autoRepeatMs = 1000;  // 1 second
 
-DataButton::DataButton(bool c, QString objectName, QWidget *parent)
+DataButton::DataButton(bool doDataToggle, bool doPressHold, bool c,
+                       QString objectName, QWidget *parent)
     : QPushButton(parent), checked(c) {
     // Set Qt button object name
     if (!objectName.isEmpty()) setObjectName(objectName);
@@ -18,15 +20,25 @@ DataButton::DataButton(bool c, QString objectName, QWidget *parent)
     // Set style for initial button state
     updateStyleSheet();
 
-    connect(this, &DataButton::pressed, this,
-            [this]() { this->flipChecked(); });
+    if (doDataToggle) {
+        connect(this, &DataButton::pressed, this,
+                [this]() { this->flipChecked(); });
+    } else {
+        connect(this, &DataButton::pressed, this,
+                [this]() { this->setChecked(true); });
+        connect(this, &DataButton::released, this,
+                [this]() { this->setChecked(false); });
+    }
 
-    // Set up button pressed and held behaviour
-    setAutoRepeat(true);
-    setAutoRepeatDelay(autoRepeatMs);
-    setAutoRepeatInterval(autoRepeatMs);
-    connect(this, &DataButton::released, this,
-            [this]() { this->updateStyleSheet(); });
+    if (doPressHold) {
+        // Set up button pressed and held behaviour
+        setAutoRepeat(true);
+        setAutoRepeatDelay(autoRepeatMs);
+        setAutoRepeatInterval(autoRepeatMs);
+
+        connect(this, &DataButton::released, this,
+                [this]() { this->updateStyleSheet(); });
+    }
 }
 
 bool DataButton::isChecked() const { return checked; }

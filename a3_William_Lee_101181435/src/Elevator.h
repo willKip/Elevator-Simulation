@@ -9,6 +9,8 @@
 #include <QStateMachine>
 #include <QString>
 
+#include "DataButton.h"
+
 class Building;
 
 /**
@@ -39,6 +41,10 @@ class Elevator : public QObject {
     const int carId;             // Unique elevator car ID within a Building
     int currentFloorNum;         // Current floor of the elevator
 
+    // Buttons to override door states
+    DataButton *const openButton;
+    DataButton *const closeButton;
+
     // Return a string representing the elevator's status.
     const QString getElevatorString() const;
 
@@ -57,11 +63,16 @@ class Elevator : public QObject {
     // Called by the building every time there is a change to the building state
     void determineMovement();
 
+    // Attempt to open or close the doors
+    void openDoors();
+    void closeDoors();
+
    private:
     // Pointer to Building Elevator exists in
     Building *const parentBuilding;
 
     // Ordered FIFO queue of floors selected on the floor panel.
+    // TODO: doesn't need to be fifo
     QQueue<int> pressedFloors;
 
     MovementState currentMovement;
@@ -91,9 +102,6 @@ class Elevator : public QObject {
     void setDoorState(DoorState);
 
     void moveElevator();
-
-    void openDoors();
-    void closeDoors();
 
     // From a given nonempty list of floors, returns the number of the ideal
     // next floor to visit.

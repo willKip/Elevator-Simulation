@@ -11,6 +11,7 @@
 #include <algorithm>
 
 #include "Building.h"
+#include "DataButton.h"
 
 Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
                    Building *parentBuilding, QObject *parent)
@@ -22,9 +23,15 @@ Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
       currentMovement(MovementState::STOPPED),
       doorState(DoorState::CLOSED),
       emergencyState(EmergencyState::NONE),
+      openButton(new DataButton(false, true, false, "")),
+      closeButton(new DataButton(false, true, false, "")),
       movementTimer(new QTimer(this)),
       doorSpeedTimer(new QTimer(this)),
       doorWaitTimer(new QTimer(this)) {
+    // Set up buttons
+    openButton->setText("Open ❰|❱");
+    closeButton->setText("Close ❱|❰");
+
     // Set up timers
     movementTimer->setInterval(movementMs);
     doorSpeedTimer->setInterval(doorSpeedMs);
@@ -51,6 +58,11 @@ Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
         }
     });
 
+    // Connect door override buttons
+    connect(openButton, &DataButton::buttonCheckedChanged, this,
+            &Elevator::openDoors);
+    connect(closeButton, &DataButton::buttonCheckedChanged, this,
+            &Elevator::closeDoors);
     // Turn off floor's buttons since elevator arrived at floor.
     // TODO: should turn off both if elevator has no panel buttons
     // pressed todo: otherwise it is making a stop at the floor and

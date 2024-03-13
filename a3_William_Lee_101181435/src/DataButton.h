@@ -11,13 +11,16 @@
  * QPushButton and implements its own.
  * Additionally, it can be pressed and held to continuously emit the pressed
  * signal.
+ * doDataToggle Pressing and holding will emit signal repeatedly
+ * doPressHold If not enabled, button will only emit the signal when pressed.
  */
 // TODO: documentation
 class DataButton : public QPushButton {
     Q_OBJECT
 
    public:
-    explicit DataButton(bool initialChecked = false, QString objectName = "",
+    explicit DataButton(bool doDataToggle = true, bool doPressHold = true,
+                        bool initialChecked = false, QString objectName = "",
                         QWidget *parent = nullptr);
 
     bool isChecked() const;  // Return current checked state

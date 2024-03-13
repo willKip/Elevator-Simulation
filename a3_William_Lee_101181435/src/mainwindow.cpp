@@ -10,6 +10,7 @@
 #include <QVBoxLayout>
 
 #include "Building.h"
+#include "Elevator.h"
 #include "ui_mainwindow.h"
 
 MainWindow::MainWindow(QWidget *parent)
@@ -32,10 +33,8 @@ MainWindow::MainWindow(QWidget *parent)
         QHeaderView::Stretch);
     buildingView->verticalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 
-    /**
-     * Initialize and add buttons for each floor in the building UI.
-     */
-    for (int f = 0; f < FLOOR_COUNT; ++f) {
+    // Add buttons for each floor in the building UI.
+    for (int f = 0; f < buildingModel->floorCount; ++f) {
         // Container widget
         QWidget *floorButtonContainer = new QWidget;
 
@@ -50,7 +49,26 @@ MainWindow::MainWindow(QWidget *parent)
         floorButtonLayout->addWidget(fd->downButton);
 
         ui->buildingView->setIndexWidget(
-            buildingModel->index(f, ELEVATOR_COUNT), floorButtonContainer);
+            buildingModel->index(f, buildingModel->elevatorCount),
+            floorButtonContainer);
+    }
+
+    // Add panel and display buttons for each elevator.
+    for (int e = 0; e < buildingModel->elevatorCount; ++e) {
+        QWidget *doorOpenCloseContainer = new QWidget;
+        QHBoxLayout *doorOpenCloseLayout =
+            new QHBoxLayout(doorOpenCloseContainer);
+        doorOpenCloseLayout->setSpacing(0);
+        doorOpenCloseLayout->setContentsMargins(0, 0, 0, 0);
+
+        Elevator *el = buildingModel->getElevator_byIndex(e);
+
+        doorOpenCloseLayout->addWidget(el->openButton);
+        doorOpenCloseLayout->addWidget(el->closeButton);
+
+        ui->buildingView->setIndexWidget(
+            buildingModel->index(buildingModel->floorCount, e),
+            doorOpenCloseContainer);
     }
 
     buttonPressed = false;

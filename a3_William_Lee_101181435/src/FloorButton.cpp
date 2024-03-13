@@ -10,7 +10,7 @@
 
 FloorButton::FloorButton(int f, Direction d, bool c, QString objectName,
                          QWidget *parent)
-    : DataButton(c, objectName, parent), floorNum(f), direction(d) {
+    : DataButton(true, true, c, objectName, parent), floorNum(f), direction(d) {
     setText(directionToLabelText());
 }
 
