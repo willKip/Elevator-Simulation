@@ -1,6 +1,5 @@
 #include "DataButton.h"
 
-#include <QObject>
 #include <QPushButton>
 #include <QSizePolicy>
 #include <QString>

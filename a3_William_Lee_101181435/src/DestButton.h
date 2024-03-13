@@ -1,10 +1,11 @@
 #ifndef DESTBUTTON_H
 #define DESTBUTTON_H
-#include <QObject>
+
 #include <QString>
 
 #include "DataButton.h"
 
+// TODO: doc
 class DestButton : public DataButton {
     Q_OBJECT
 

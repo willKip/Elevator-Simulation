@@ -1,8 +1,8 @@
 #ifndef FLOORBUTTON_H
 #define FLOORBUTTON_H
 
-#include <QObject>
 #include <QString>
+#include <QWidget>
 
 #include "DataButton.h"
 #include "Direction.h"

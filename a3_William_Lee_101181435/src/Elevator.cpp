@@ -1,19 +1,16 @@
 #include "Elevator.h"
 
 #include <QMap>
-#include <QMessageBox>
 #include <QObject>
-#include <QQueue>
-#include <QSignalTransition>
-#include <QState>
-#include <QStateMachine>
 #include <QString>
 #include <QTimer>
 #include <QVector>
+#include <QWidget>
 #include <algorithm>
 
 #include "Building.h"
 #include "DataButton.h"
+#include "DestButton.h"
 
 Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
                    Building *parentBuilding, QObject *parent)
@@ -21,9 +18,9 @@ Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
       buildingColIndex(buildingColIndex),
       carId(carId),
       currentFloorNum(initialFloorNum),
+      parentBuilding(parentBuilding),
       openButton(new DataButton(false, true, false, "")),
       closeButton(new DataButton(false, true, false, "")),
-      parentBuilding(parentBuilding),
       currentMovement(MovementState::STOPPED),
       doorState(DoorState::CLOSED),
       emergencyState(EmergencyState::NONE),
@@ -39,20 +36,12 @@ Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
         DestButton *destButton = new DestButton(floorNum);
 
         destinationButtons.insert(floorNum, destButton);
-
-        connect(destButton, &DataButton::buttonCheckedChanged, this,
-                &Elevator::determineMovement);
     }
 
     // Set up timers
     movementTimer->setInterval(movementMs);
     doorSpeedTimer->setInterval(doorSpeedMs);
     doorWaitTimer->setInterval(doorWaitMs);
-
-    // Inform elevator to compute new movement when parent building's data
-    // changes.
-    connect(parentBuilding, &Building::buildingDataChanged, this,
-            &Elevator::determineMovement);
 
     // Complete the transition of door state if speedTimer completes without
     // interruption.
@@ -83,179 +72,25 @@ Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
 
     // If the movement timer completes without interruption, finalize the
     // movement and reflect the new position in the building.
-    connect(movementTimer, &QTimer::timeout, this, &Elevator::moveElevator);
+    connect(movementTimer, &QTimer::timeout, this, [this]() {
+        switch (currentMovement) {
+            case MovementState::UPWARDS:
+                ++currentFloorNum;
+                emit elevatorDataChanged();
+                break;
+            case MovementState::DOWNWARDS:
+                --currentFloorNum;
+                emit elevatorDataChanged();
+                break;
+            default:
+                break;
+        }
+    });
 
     // If door has been open until timer expiry, start closing door.
     connect(doorWaitTimer, &QTimer::timeout, this, [this]() {
         if (this->doorState == DoorState::OPEN) this->closeDoors();
     });
-}
-
-void Elevator::moveElevator() {
-    switch (currentMovement) {
-        case MovementState::UPWARDS:
-            parentBuilding->placeElevator(carId, currentFloorNum + 1);
-            break;
-        case MovementState::DOWNWARDS:
-            parentBuilding->placeElevator(carId, currentFloorNum - 1);
-            break;
-        default:
-            break;
-    }
-}
-
-void Elevator::determineMovement() {
-    QVector<int> queuedFloors = parentBuilding->getQueuedFloors();
-    // queuedFloors.append(queuedDestinations());
-
-    if (queuedFloors.isEmpty()) {
-        // No eligible floors queued
-        setMovement(MovementState::STOPPED);
-        return;
-    }
-
-    int targetFloor = closestQueuedFloor(queuedFloors);
-
-    if (currentFloorNum == targetFloor) {
-        // Always open up to accommodate requests on current floor.
-        setMovement(MovementState::STOPPED);
-        openDoors();  // TODO: order matters here, what to do?
-        parentBuilding->getFloor_byFloorNum(this->currentFloorNum)
-            ->resetButtons();
-    } else if (doorState == DoorState::CLOSED) {
-        // TODO: Elevator ready to move
-        // No buttons pressed on elevator's panel.
-        if (currentFloorNum < targetFloor) {
-            setMovement(MovementState::UPWARDS);
-        } else if (currentFloorNum > targetFloor) {
-            setMovement(MovementState::DOWNWARDS);
-        }
-    }
-}
-
-bool Elevator::isMoving() const {
-    return currentMovement != MovementState::STOPPED;
-}
-
-const QVector<int> Elevator::queuedDestinations() const {
-    QVector<int> queued;
-
-    const QMap<int, DestButton *> destButtons = destinationButtons;
-
-    QMap<int, DestButton *>::const_iterator i = destButtons.constBegin();
-    while (i != destButtons.constEnd()) {
-        if (i.value()->isChecked()) {
-            queued.append(i.key());
-        }
-    }
-
-    return queued;
-}
-
-void Elevator::setMovement(Elevator::MovementState newMovement) {
-    if (currentMovement != newMovement) {
-        currentMovement = newMovement;
-
-        if (isMoving())
-            this->movementTimer->start();
-        else
-            this->movementTimer->stop();
-
-        emit elevatorDataChanged(buildingColIndex);
-    }
-}
-
-void Elevator::setDoorState(Elevator::DoorState newDoorState) {
-    if (doorState != newDoorState) {
-        doorState = newDoorState;
-        emit elevatorDataChanged(buildingColIndex);
-    }
-}
-
-void Elevator::openDoors() {
-    // Only attempt to open doors if the elevator is not moving
-    if (isMoving()) return;
-
-    switch (doorState) {
-        case DoorState::OPEN:
-            // Extend open time (reset timer)
-            doorWaitTimer->start();
-            break;
-        case DoorState::CLOSED:
-        case DoorState::CLOSING:
-            setDoorState(DoorState::OPENING);
-            doorSpeedTimer->start();
-            break;
-        case DoorState::OPENING:
-            // Already opening, no effect.
-            break;
-        default:
-            throw "ERROR: Elevator in impossible DoorState";
-            break;
-    }
-}
-
-void Elevator::closeDoors() {
-    // Doors would already be closed if elevator is moving
-    if (isMoving()) return;
-
-    switch (doorState) {
-        case DoorState::CLOSED:
-        case DoorState::CLOSING:
-            // Already closing or closed, no effect.
-            break;
-        case DoorState::OPEN:
-        case DoorState::OPENING:
-            // Force close doors before timeout.
-            // TODO: handle obstacle state
-            setDoorState(DoorState::CLOSING);
-            doorWaitTimer->stop();
-            doorSpeedTimer->start();
-            break;
-        default:
-            throw "ERROR: Elevator in impossible DoorState";
-            break;
-    }
-}
-
-int Elevator::closestQueuedFloor(const QVector<int> &floors) const {
-    if (floors.isEmpty())
-        throw "ERROR: No floors are queued, cannot find closest queued";
-    // TODO: ^, whether elevator was moving or idle determines whether it
-    // opens door or not.
-
-    // Current floor is below or above all queued floors.
-    if (currentFloorNum <= floors.first()) return floors.first();
-    if (currentFloorNum >= floors.last()) return floors.last();
-
-    // Current floor is between two queued floors, before and after.
-    const int *closestIt = std::adjacent_find(
-        floors.begin(), floors.end(), [this](int before, int after) {
-            return currentFloorNum >= before && currentFloorNum <= after;
-        });
-
-    int closestBefore = *closestIt;       // Closest queued before current
-    int closestAfter = *(closestIt + 1);  // Closest queued after current
-
-    // Distances to each floor.
-    int distBefore = currentFloorNum - closestBefore;
-    int distAfter = closestAfter - currentFloorNum;
-
-    // Return the floor that is closer. In case of a tie, floor that was on
-    // the direction the elevator was moving is prioritized. If the elevator
-    // somehow had no direction it was moving in, lower floor is
-    // prioritized.
-    if (distBefore < distAfter) {
-        return closestBefore;
-    } else if (distAfter < distBefore) {
-        return closestAfter;
-    } else {
-        // Distance tied
-        if (currentMovement == MovementState::UPWARDS)
-            return closestAfter;
-        else
-            return closestBefore;
-    }
 }
 
 const QString Elevator::getElevatorString() const {
@@ -315,4 +150,170 @@ const QString Elevator::getElevatorString() const {
             throw "ERROR: Invalid emergency enum";
     }
     return QString("%1\n%2%3").arg(movementStr, doorStr, emergencyStr);
+}
+
+bool Elevator::isMoving() const {
+    return currentMovement != MovementState::STOPPED;
+}
+
+void Elevator::determineMovement() {
+    QVector<int> queuedFloors = parentBuilding->getQueuedFloors();
+    // queuedFloors.append(queuedDestinations());
+
+    if (queuedFloors.isEmpty()) {
+        // No eligible floors queued
+        setMovement(MovementState::STOPPED);
+        return;
+    }
+
+    int targetFloor = closestQueuedFloor(queuedFloors);
+
+    if (currentFloorNum == targetFloor) {
+        // Always open up to accommodate requests on current floor.
+        setMovement(MovementState::STOPPED);
+        openDoors();  // TODO: order matters here, what to do?
+        emit elevatorArrived();
+    } else if (doorState == DoorState::CLOSED) {
+        // TODO: Elevator ready to move
+        // No buttons pressed on elevator's panel.
+        if (currentFloorNum < targetFloor) {
+            setMovement(MovementState::UPWARDS);
+        } else if (currentFloorNum > targetFloor) {
+            setMovement(MovementState::DOWNWARDS);
+        }
+    }
+}
+
+void Elevator::openDoors() {
+    // Only attempt to open doors if the elevator is not moving
+    if (isMoving()) return;
+
+    switch (doorState) {
+        case DoorState::OPEN:
+            // Extend open time (reset timer)
+            doorWaitTimer->start();
+            break;
+        case DoorState::CLOSED:
+        case DoorState::CLOSING:
+            setDoorState(DoorState::OPENING);
+            doorSpeedTimer->start();
+            break;
+        case DoorState::OPENING:
+            // Already opening, no effect.
+            break;
+        default:
+            throw "ERROR: Elevator in impossible DoorState";
+            break;
+    }
+}
+
+void Elevator::closeDoors() {
+    // Doors would already be closed if elevator is moving
+    if (isMoving()) return;
+
+    switch (doorState) {
+        case DoorState::CLOSED:
+        case DoorState::CLOSING:
+            // Already closing or closed, no effect.
+            break;
+        case DoorState::OPEN:
+        case DoorState::OPENING:
+            // Force close doors before timeout.
+            // TODO: handle obstacle state
+            setDoorState(DoorState::CLOSING);
+            doorWaitTimer->stop();
+            doorSpeedTimer->start();
+            break;
+        default:
+            throw "ERROR: Elevator in impossible DoorState";
+            break;
+    }
+}
+
+void Elevator::setMovement(Elevator::MovementState newMovement) {
+    if (currentMovement != newMovement) {
+        currentMovement = newMovement;
+
+        if (isMoving())
+            this->movementTimer->start();
+        else
+            this->movementTimer->stop();
+
+        emit elevatorDataChanged();
+    }
+}
+
+void Elevator::setDoorState(Elevator::DoorState newDoorState) {
+    if (doorState != newDoorState) {
+        doorState = newDoorState;
+        emit elevatorDataChanged();
+    }
+}
+
+const QVector<int> Elevator::queuedDestinations() const {
+    QVector<int> queued;
+
+    for (auto i = destinationButtons.cbegin(), end = destinationButtons.cend();
+         i != end; ++i) {
+        if (i.value()->isChecked()) {
+            queued.append(i.key());
+        }
+    }
+
+    return queued;
+}
+
+int Elevator::closestQueuedFloor(const QVector<int> &floors) const {
+    if (floors.isEmpty())
+        throw "ERROR: No floors are queued, cannot find closest queued";
+    // TODO: ^, whether elevator was moving or idle determines whether it
+    // opens door or not.
+
+    // Current floor is below or above all queued floors.
+    if (currentFloorNum <= floors.first()) return floors.first();
+    if (currentFloorNum >= floors.last()) return floors.last();
+
+    // Current floor is between two queued floors, before and after.
+    const int *closestIt = std::adjacent_find(
+        floors.begin(), floors.end(), [this](int before, int after) {
+            return currentFloorNum >= before && currentFloorNum <= after;
+        });
+
+    int closestBefore = *closestIt;       // Closest queued before current
+    int closestAfter = *(closestIt + 1);  // Closest queued after current
+
+    // Distances to each floor.
+    int distBefore = currentFloorNum - closestBefore;
+    int distAfter = closestAfter - currentFloorNum;
+
+    // Return the floor that is closer. In case of a tie, floor that was on
+    // the direction the elevator was moving is prioritized. If the elevator
+    // somehow had no direction it was moving in, lower floor is
+    // prioritized.
+    if (distBefore < distAfter) {
+        return closestBefore;
+    } else if (distAfter < distBefore) {
+        return closestAfter;
+    } else {
+        // Distance tied
+        if (currentMovement == MovementState::UPWARDS)
+            return closestAfter;
+        else
+            return closestBefore;
+    }
+}
+
+QVector<QWidget *> Elevator::getDoorButtonWidgets() {
+    return QVector<QWidget *>{qobject_cast<QWidget *>(openButton),
+                              qobject_cast<QWidget *>(closeButton)};
+}
+
+QVector<QWidget *> Elevator::getDestButtonWidgets() {
+    QVector<QWidget *> toReturn;
+
+    for (auto i = destinationButtons.cbegin(), end = destinationButtons.cend();
+         i != end; ++i)
+        toReturn.append(qobject_cast<QWidget *>(i.value()));
+
+    return toReturn;
 }

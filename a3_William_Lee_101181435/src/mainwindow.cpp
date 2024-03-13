@@ -1,18 +1,16 @@
 #include "mainwindow.h"
 
-#include <QCheckBox>
-#include <QHBoxLayout>
-#include <QMap>
-#include <QPushButton>
-#include <QSignalMapper>
-#include <QStandardItem>
+#include <QBoxLayout>
+#include <QLabel>
+#include <QScrollBar>
 #include <QString>
-#include <QVBoxLayout>
 #include <QVector>
+#include <QVectorIterator>
 #include <QWidget>
 
 #include "Building.h"
 #include "Elevator.h"
+#include "Floor.h"
 #include "ui_mainwindow.h"
 
 MainWindow::MainWindow(QWidget *parent)
@@ -26,18 +24,22 @@ MainWindow::MainWindow(QWidget *parent)
      * Initialize building view in UI.
      */
     buildingView = ui->buildingView;
+
     // Make rows and columns stretch to parent
     buildingView->setModel(buildingModel);
+
+    // Make vertical and horizontal headers (elevator, floor number labels)
+    // fill entire available space.
     buildingView->horizontalHeader()->setSectionResizeMode(
         QHeaderView::Stretch);
     buildingView->verticalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 
     // Add buttons for each floor in the building UI.
     for (int f = 0; f < buildingModel->floorCount; ++f) {
-        FloorData *fd = buildingModel->getFloor_byIndex(f);
+        Floor *fd = buildingModel->getFloor_byIndex(f);
 
-        addButtons(f, buildingModel->elevatorCount,
-                   QVector<QWidget *>{fd->upButton, fd->downButton}, false);
+        addButtons(f, buildingModel->elevatorCount, fd->getButtonWidgets(),
+                   false);
     }
 
     // Add panel and display buttons for each elevator.
@@ -45,15 +47,12 @@ MainWindow::MainWindow(QWidget *parent)
         Elevator *el = buildingModel->getElevator_byIndex(e);
 
         // First row: open/close buttons
-        addButtons(buildingModel->floorCount, e,
-                   QVector<QWidget *>{el->openButton, el->closeButton}, false);
+        addButtons(buildingModel->floorCount, e, el->getDoorButtonWidgets(),
+                   false);
 
         // Second row: Destination buttons, lower floors first
-        QVector<QWidget *> floorPanel;
-        for (int f = 0; f < buildingModel->floorCount; ++f)
-            floorPanel.prepend(
-                el->destinationButtons[buildingModel->index_to_floorNum(f)]);
-        addButtons(buildingModel->floorCount + 1, e, floorPanel, false);
+        addButtons(buildingModel->floorCount + 1, e, el->getDestButtonWidgets(),
+                   false);
     }
 }
 
@@ -81,7 +80,7 @@ void MainWindow::addButtons(int rowIndex, int colIndex,
 
 void MainWindow::inlineConsoleDisplay(const QString &text) {
     QLabel *prevTextLabel = ui->textOutput;
-    prevTextLabel->setText(QString(prevTextLabel->text() % "\n" % text));
+    prevTextLabel->setText(QString("%1\n%2").arg(prevTextLabel->text(), text));
 
     // Scroll to the bottom of the inline terminal.
     QScrollBar *sb = ui->outputScroll->verticalScrollBar();

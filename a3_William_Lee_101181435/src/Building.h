@@ -2,52 +2,15 @@
 #define BUILDING_H
 
 #include <QAbstractTableModel>
-#include <QBrush>
-#include <QDebug>
-#include <QFont>
 #include <QHash>
 #include <QMap>
-#include <QPushButton>
-#include <QString>
-#include <QTimer>
 #include <QVector>
 
 #include "Direction.h"
-#include "FloorButton.h"
 
 // Forward declarations
 class Elevator;
-class FloorData;
-
-// Main class
-class Building;
-
-// Helper data class for better management of associated data
-// TODO: documentation
-class FloorData : public QObject {
-    Q_OBJECT
-   public:
-    FloorData(int index, int floorNumber, Building *parentBuilding,
-              QObject *parent = nullptr);
-
-    const int index;        // Data index within a Building
-    const int floorNumber;  // Unique floor number within a Building
-
-    // Directional buttons of the floor. Public so that they can be accessed for
-    // adding to the UI.
-    FloorButton *const upButton;
-    FloorButton *const downButton;
-
-    // Return checked state of floor buttons
-    bool pressedUp() const;
-    bool pressedDown() const;
-
-    // Set all buttons of the floor to unchecked
-    void resetButtons();
-
-   private:
-    Building *const parentBuilding;  // Pointer to Building FloorData belongs to
-};
+class Floor;
 
 /**
  * Class simulating a building with elevators.
@@ -86,8 +49,8 @@ class Building : public QAbstractTableModel {
     QVariant headerData(int section, Qt::Orientation, int role) const override;
 
     // Access methods for floor and elevator data
-    FloorData *getFloor_byIndex(int index);
-    FloorData *getFloor_byFloorNum(int floorNum);
+    Floor *getFloor_byIndex(int index);
+    Floor *getFloor_byFloorNum(int floorNum);
     Elevator *getElevator_byIndex(int index);
     Elevator *getElevator_byCarId(int carId);
 
@@ -100,12 +63,6 @@ class Building : public QAbstractTableModel {
     // buttons (pending elevator requests). If a direction is specified, return
     // only the floors that have the matching direction's buttons pressed.
     const QVector<int> getQueuedFloors(Direction = Direction::NONE) const;
-
-    /**
-     * Set the elevator of the given ID to the given floor.
-     * Returns the previous floor number.
-     */
-    int placeElevator(int carId, int newFloorNum);
 
     // Update a specific column (elevator) in the view.
     void updateColumn(int col);
@@ -132,7 +89,7 @@ class Building : public QAbstractTableModel {
      * Ascending order mappings of floor numbers and elevator IDs to
      * corresponding floor and elevator data classes.
      */
-    QMap<int, FloorData *> floorNum_FloorData_Map;
+    QMap<int, Floor *> floorNum_FloorData_Map;
     QMap<int, Elevator *> carId_Elevator_Map;
 
     // Maps of building object table indices to floor numbers and elevator IDs.

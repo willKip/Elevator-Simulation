@@ -1,11 +1,9 @@
 #include "FloorButton.h"
 
-#include <QObject>
-#include <QPushButton>
-#include <QSizePolicy>
 #include <QString>
+#include <QWidget>
 
-#include "Building.h"
+#include "DataButton.h"
 #include "Direction.h"
 
 FloorButton::FloorButton(int f, Direction d, bool c, QString objectName,

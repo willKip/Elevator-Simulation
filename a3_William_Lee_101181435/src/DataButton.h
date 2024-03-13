@@ -1,7 +1,6 @@
 #ifndef DATABUTTON_H
 #define DATABUTTON_H
 
-#include <QObject>
 #include <QPushButton>
 
 /**

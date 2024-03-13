@@ -18,6 +18,7 @@ SOURCES += \
     $${source_dir}/Elevator.cpp \
     $${source_dir}/DataButton.cpp \
     $${source_dir}/DestButton.cpp \
+    $${source_dir}/Floor.cpp \
     $${source_dir}/FloorButton.cpp
 
 HEADERS += \
@@ -27,6 +28,7 @@ HEADERS += \
     $${source_dir}/DataButton.h \
     $${source_dir}/DestButton.h \
     $${source_dir}/FloorButton.h \
+    $${source_dir}/Floor.h \
     $${source_dir}/Direction.h
 
 FORMS += \
