@@ -1,5 +1,6 @@
 #include "Elevator.h"
 
+#include <QMap>
 #include <QMessageBox>
 #include <QObject>
 #include <QQueue>
@@ -8,6 +9,7 @@
 #include <QStateMachine>
 #include <QString>
 #include <QTimer>
+#include <QVector>
 #include <algorithm>
 
 #include "Building.h"
@@ -19,18 +21,28 @@ Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
       buildingColIndex(buildingColIndex),
       carId(carId),
       currentFloorNum(initialFloorNum),
+      openButton(new DataButton(false, true, false, "")),
+      closeButton(new DataButton(false, true, false, "")),
       parentBuilding(parentBuilding),
       currentMovement(MovementState::STOPPED),
       doorState(DoorState::CLOSED),
       emergencyState(EmergencyState::NONE),
-      openButton(new DataButton(false, true, false, "")),
-      closeButton(new DataButton(false, true, false, "")),
       movementTimer(new QTimer(this)),
       doorSpeedTimer(new QTimer(this)),
       doorWaitTimer(new QTimer(this)) {
     // Set up buttons
     openButton->setText("Open ❰|❱");
     closeButton->setText("Close ❱|❰");
+
+    for (int f_ind = 0; f_ind < parentBuilding->floorCount; ++f_ind) {
+        int floorNum = parentBuilding->index_to_floorNum(f_ind);
+        DestButton *destButton = new DestButton(floorNum);
+
+        destinationButtons.insert(floorNum, destButton);
+
+        connect(destButton, &DataButton::buttonCheckedChanged, this,
+                &Elevator::determineMovement);
+    }
 
     // Set up timers
     movementTimer->setInterval(movementMs);
@@ -94,6 +106,8 @@ void Elevator::moveElevator() {
 
 void Elevator::determineMovement() {
     QVector<int> queuedFloors = parentBuilding->getQueuedFloors();
+    // queuedFloors.append(queuedDestinations());
+
     if (queuedFloors.isEmpty()) {
         // No eligible floors queued
         setMovement(MovementState::STOPPED);
@@ -121,6 +135,21 @@ void Elevator::determineMovement() {
 
 bool Elevator::isMoving() const {
     return currentMovement != MovementState::STOPPED;
+}
+
+const QVector<int> Elevator::queuedDestinations() const {
+    QVector<int> queued;
+
+    const QMap<int, DestButton *> destButtons = destinationButtons;
+
+    QMap<int, DestButton *>::const_iterator i = destButtons.constBegin();
+    while (i != destButtons.constEnd()) {
+        if (i.value()->isChecked()) {
+            queued.append(i.key());
+        }
+    }
+
+    return queued;
 }
 
 void Elevator::setMovement(Elevator::MovementState newMovement) {

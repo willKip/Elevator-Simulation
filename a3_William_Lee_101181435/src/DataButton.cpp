@@ -1,6 +1,5 @@
 #include "DataButton.h"
 
-#include <QDebug>
 #include <QObject>
 #include <QPushButton>
 #include <QSizePolicy>
@@ -11,14 +10,11 @@ const int DataButton::autoRepeatMs = 1000;  // 1 second
 
 DataButton::DataButton(bool doDataToggle, bool doPressHold, bool c,
                        QString objectName, QWidget *parent)
-    : QPushButton(parent), checked(c), doPressHold(doPressHold) {
+    : QPushButton(parent), doPressHold(doPressHold), checked(c) {
     // Set Qt button object name
     if (!objectName.isEmpty()) setObjectName(objectName);
 
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-
-    // Set style for initial button state
-    updateStyleSheet();
 
     if (doDataToggle) {
         connect(this, &DataButton::pressed, this,
@@ -45,8 +41,6 @@ bool DataButton::isChecked() const { return checked; }
 
 void DataButton::setChecked(bool newState) {
     if (checked != newState) {
-        qInfo() << "hey";
-
         checked = newState;
         updateStyleSheet();
         emit buttonCheckedChanged();

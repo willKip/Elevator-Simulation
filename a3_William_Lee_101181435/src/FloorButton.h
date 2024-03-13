@@ -2,7 +2,7 @@
 #define FLOORBUTTON_H
 
 #include <QObject>
-#include <QPushButton>
+#include <QString>
 
 #include "DataButton.h"
 #include "Direction.h"

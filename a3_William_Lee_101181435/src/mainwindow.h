@@ -10,6 +10,8 @@
 #include <QTableView>
 #include <QTimer>
 #include <QVBoxLayout>
+#include <QVector>
+#include <QWidget>
 
 #include "Building.h"
 
@@ -38,15 +40,16 @@ class MainWindow : public QMainWindow {
     // Length of each time chunk in the simulation, in milliseconds.
     static const int UPDATE_INTERVAL_MS = 1000;
 
-    QTimer *updateTimer;
-
-    bool buttonPressed;  // TODO: temp
-
     Building *buildingModel;
     QTableView *buildingView;
 
+    // Add UI representations of buttons to building view/model in specified
+    // index. Horizontal layout unless specified otherwise in the boolean.
+    void addButtons(int rowIndex, int colIndex, QVector<QWidget *> buttonsToAdd,
+                    bool layoutIsVertical = false);
+
    private slots:
-    void testFunction();
+    // Display specified text to the inline console.
     void inlineConsoleDisplay(const QString &text);
 };
 #endif  // MAINWINDOW_H

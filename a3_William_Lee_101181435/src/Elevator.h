@@ -1,15 +1,14 @@
 #ifndef ELEVATOR_H
 #define ELEVATOR_H
 
-#include <QMessageBox>
+#include <QMap>
 #include <QObject>
-#include <QQueue>
-#include <QSignalTransition>
-#include <QState>
-#include <QStateMachine>
 #include <QString>
+#include <QTimer>
+#include <QVector>
 
 #include "DataButton.h"
+#include "DestButton.h"
 
 class Building;
 
@@ -45,6 +44,9 @@ class Elevator : public QObject {
     DataButton *const openButton;
     DataButton *const closeButton;
 
+    // Destination buttons; mapping floor numbers to their button pointers.
+    QMap<int, DestButton *> destinationButtons;
+
     // Return a string representing the elevator's status.
     const QString getElevatorString() const;
 
@@ -54,10 +56,6 @@ class Elevator : public QObject {
    signals:
     // Fired when an aspect of the elevator has changed.
     void elevatorDataChanged(int index);
-
-   signals:
-    // Fired when an elevator arrives at a destination.
-    void elevatorArrived();
 
    public slots:
     // Called by the building every time there is a change to the building state
@@ -70,10 +68,6 @@ class Elevator : public QObject {
    private:
     // Pointer to Building Elevator exists in
     Building *const parentBuilding;
-
-    // Ordered FIFO queue of floors selected on the floor panel.
-    // TODO: doesn't need to be fifo
-    QQueue<int> pressedFloors;
 
     MovementState currentMovement;
     DoorState doorState;
@@ -93,15 +87,18 @@ class Elevator : public QObject {
     // How long it takes for an elevator to reach a new floor in the simulation
     static const int movementMs = 1000;
     // How long it takes for a door to fully close
-    static const int doorSpeedMs = 2000;
+    static const int doorSpeedMs = 1000;
     // How long it takes before an open door will close itself
-    static const int doorWaitMs = 3000;
+    static const int doorWaitMs = 2000;
 
     // Private setters to emit signals appropriately upon data change
     void setMovement(MovementState);
     void setDoorState(DoorState);
 
     void moveElevator();
+
+    // Return a list of floors queued on the elevator panel.
+    const QVector<int> queuedDestinations() const;
 
     // From a given nonempty list of floors, returns the number of the ideal
     // next floor to visit.

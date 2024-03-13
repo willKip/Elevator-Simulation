@@ -17,6 +17,7 @@ SOURCES += \
     $${source_dir}/Building.cpp \
     $${source_dir}/Elevator.cpp \
     $${source_dir}/DataButton.cpp \
+    $${source_dir}/DestButton.cpp \
     $${source_dir}/FloorButton.cpp
 
 HEADERS += \
@@ -24,6 +25,7 @@ HEADERS += \
     $${source_dir}/Building.h \
     $${source_dir}/Elevator.h \
     $${source_dir}/DataButton.h \
+    $${source_dir}/DestButton.h \
     $${source_dir}/FloorButton.h \
     $${source_dir}/Direction.h
 

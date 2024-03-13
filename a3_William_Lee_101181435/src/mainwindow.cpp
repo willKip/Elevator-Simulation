@@ -8,6 +8,8 @@
 #include <QStandardItem>
 #include <QString>
 #include <QVBoxLayout>
+#include <QVector>
+#include <QWidget>
 
 #include "Building.h"
 #include "Elevator.h"
@@ -16,9 +18,6 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
-
-    // TODO: remove
-    connect(ui->testButton, SIGNAL(released()), this, SLOT(testFunction()));
 
     // Initialize building data model.
     buildingModel = new Building(FLOOR_COUNT, ELEVATOR_COUNT, 3, 1);
@@ -35,58 +34,52 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Add buttons for each floor in the building UI.
     for (int f = 0; f < buildingModel->floorCount; ++f) {
-        // Container widget
-        QWidget *floorButtonContainer = new QWidget;
-
-        // Set layout on the container
-        QHBoxLayout *floorButtonLayout = new QHBoxLayout(floorButtonContainer);
-        floorButtonLayout->setSpacing(0);
-        floorButtonLayout->setContentsMargins(0, 0, 0, 0);
-
         FloorData *fd = buildingModel->getFloor_byIndex(f);
 
-        floorButtonLayout->addWidget(fd->upButton);
-        floorButtonLayout->addWidget(fd->downButton);
-
-        ui->buildingView->setIndexWidget(
-            buildingModel->index(f, buildingModel->elevatorCount),
-            floorButtonContainer);
+        addButtons(f, buildingModel->elevatorCount,
+                   QVector<QWidget *>{fd->upButton, fd->downButton}, false);
     }
 
     // Add panel and display buttons for each elevator.
     for (int e = 0; e < buildingModel->elevatorCount; ++e) {
-        QWidget *doorOpenCloseContainer = new QWidget;
-        QHBoxLayout *doorOpenCloseLayout =
-            new QHBoxLayout(doorOpenCloseContainer);
-        doorOpenCloseLayout->setSpacing(0);
-        doorOpenCloseLayout->setContentsMargins(0, 0, 0, 0);
-
         Elevator *el = buildingModel->getElevator_byIndex(e);
 
-        doorOpenCloseLayout->addWidget(el->openButton);
-        doorOpenCloseLayout->addWidget(el->closeButton);
+        // First row: open/close buttons
+        addButtons(buildingModel->floorCount, e,
+                   QVector<QWidget *>{el->openButton, el->closeButton}, false);
 
-        ui->buildingView->setIndexWidget(
-            buildingModel->index(buildingModel->floorCount, e),
-            doorOpenCloseContainer);
+        // Second row: Destination buttons, lower floors first
+        QVector<QWidget *> floorPanel;
+        for (int f = 0; f < buildingModel->floorCount; ++f)
+            floorPanel.prepend(
+                el->destinationButtons[buildingModel->index_to_floorNum(f)]);
+        addButtons(buildingModel->floorCount + 1, e, floorPanel, false);
     }
-
-    buttonPressed = false;
 }
 
-MainWindow::~MainWindow() {
-    delete ui;
-    delete updateTimer;
+MainWindow::~MainWindow() { delete ui; }
+
+void MainWindow::addButtons(int rowIndex, int colIndex,
+                            QVector<QWidget *> buttonsToAdd,
+                            bool layoutIsVertical) {
+    // Container widget
+    QWidget *newContainer = new QWidget;
+
+    // Set horizontal or vertical layout on the container
+    QBoxLayout *newLayout = new QBoxLayout(
+        (layoutIsVertical ? QBoxLayout::TopToBottom : QBoxLayout::LeftToRight),
+        newContainer);
+    newLayout->setSpacing(0);
+    newLayout->setContentsMargins(0, 0, 0, 0);
+
+    QVectorIterator<QWidget *> i(buttonsToAdd);
+    while (i.hasNext()) newLayout->addWidget(i.next());
+
+    ui->buildingView->setIndexWidget(buildingModel->index(rowIndex, colIndex),
+                                     newContainer);
 }
 
-void MainWindow::testFunction() {
-    buttonPressed = true;
-    inlineConsoleDisplay("Button pressed!");
-}
-
-// Display specified text to the inline console.
 void MainWindow::inlineConsoleDisplay(const QString &text) {
-    // TODO: Display time before each output.
     QLabel *prevTextLabel = ui->textOutput;
     prevTextLabel->setText(QString(prevTextLabel->text() % "\n" % text));
 

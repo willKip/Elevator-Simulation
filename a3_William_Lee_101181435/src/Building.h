@@ -91,6 +91,11 @@ class Building : public QAbstractTableModel {
     Elevator *getElevator_byIndex(int index);
     Elevator *getElevator_byCarId(int carId);
 
+    // Defines how floor and elevator IDs are assigned relative to their
+    // indices.
+    int index_to_floorNum(int index) const;
+    int index_to_carId(int index) const;
+
     // Get an ascending list of floor numbers where the floors have pressed
     // buttons (pending elevator requests). If a direction is specified, return
     // only the floors that have the matching direction's buttons pressed.
@@ -111,10 +116,6 @@ class Building : public QAbstractTableModel {
     void buildingDataChanged();
 
    private:
-    // Defines how floor and elevator IDs are assigned relative to their
-    // indices.
-    int index_to_floorNum(int index) const;
-    int index_to_carId(int index) const;
     // Const access method for data function use
     const Elevator *getElevator_byIndex(int index) const;
 
