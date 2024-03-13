@@ -11,7 +11,7 @@ const int DataButton::autoRepeatMs = 1000;  // 1 second
 
 DataButton::DataButton(bool doDataToggle, bool doPressHold, bool c,
                        QString objectName, QWidget *parent)
-    : QPushButton(parent), checked(c) {
+    : QPushButton(parent), checked(c), doPressHold(doPressHold) {
     // Set Qt button object name
     if (!objectName.isEmpty()) setObjectName(objectName);
 
@@ -45,6 +45,8 @@ bool DataButton::isChecked() const { return checked; }
 
 void DataButton::setChecked(bool newState) {
     if (checked != newState) {
+        qInfo() << "hey";
+
         checked = newState;
         updateStyleSheet();
         emit buttonCheckedChanged();
@@ -64,7 +66,7 @@ void DataButton::updateStyleSheet() {
     const QString unCheckedStyleSheetStr = "";
 
     // If the button is currently being held down, style it as if checked.
-    if (checked || isDown())
+    if (checked || (doPressHold && isDown()))
         setStyleSheet(checkedStyleSheetStr);
     else
         setStyleSheet(unCheckedStyleSheetStr);

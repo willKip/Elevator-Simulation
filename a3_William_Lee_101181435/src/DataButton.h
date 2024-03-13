@@ -36,6 +36,7 @@ class DataButton : public QPushButton {
    protected:
     // Interval for emitting pressed signal repeatedly when held down
     static const int autoRepeatMs;
+    const bool doPressHold;
 
     bool checked;
 
