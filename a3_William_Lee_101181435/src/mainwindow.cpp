@@ -12,7 +12,6 @@
 
 #include "Building.h"
 #include "Elevator.h"
-#include "Floor.h"
 #include "ui_mainwindow.h"
 
 // TODO: cleanup
@@ -39,10 +38,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Add buttons for each floor in the building UI.
     for (int f = 0; f < buildingModel->floorCount; ++f) {
-        Floor *fd = buildingModel->getFloor_byIndex(f);
-
-        addIndexWidgets(f, buildingModel->elevatorCount, fd->getButtonWidgets(),
-                        false);
+        addIndexWidgets(f, buildingModel->elevatorCount,
+                        buildingModel->getFloorButtons_byIndex(f), false);
     }
 
     /**

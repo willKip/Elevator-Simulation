@@ -9,8 +9,8 @@
 
 // Forward declarations
 class Elevator;
-class Floor;
 class DataButton;
+struct floorData;
 
 /** Simulates a building with elevators.
  *
@@ -19,6 +19,8 @@ class DataButton;
  * elevators and providing a table-like interface to access through a Qt view.
  *
  * Data Members:
+ * + floorData: struct
+ *      Data struct to hold pointers to each floor's directional buttons.
  * + floorCount: int
  *      Number of floors in the building. Floors correspond to rows.
  * + elevatorCount: int
@@ -28,10 +30,10 @@ class DataButton;
  * + colButtonCount: int
  *      Number of additional columns allotted for buttons
  *
- * - floorNum_FloorData_Map: QMap<int, Floor *>
+ * - floorNum_FloorData_Map: QMap<int, floorData>
  * - carId_Elevator_Map: QMap<int, Elevator *>
- *      Mappings of floor numbers and elevator IDs to their corresponding
- *      Floor and Elevator pointers.
+ *      Ascending order mappings of floor numbers and elevator IDs to their
+ *      corresponding floorData structs and Elevator pointers.
  *
  * - buildingFireButton: DataButton *
  * - buildingPowerOutButton: DataButton *
@@ -41,7 +43,7 @@ class DataButton;
  * + index_to_floorNum(int): int
  * + index_to_carId(int): int
  *      Defines the relationship between data indices used in this class and
- *      floor numbers / elevator car IDs.
+ *      floor numbers / elevator car IDs, and returns the converted numbers.
  *
  * + getQueuedFloors(Direction): QVector<int>
  *      Returns a list of floor numbers where the buttons active on the floor
@@ -55,13 +57,16 @@ class DataButton;
  * + getEmergencyButtons(): QVector<QWidget *>
  *      Return Qt widget pointers to the emergency simulation buttons of the
  *      building.
+ * + getFloorButtons_byIndex(int): QVector<QWidget *>
+ *      Return Qt widget pointers to the floor buttons of the floor with a
+ *      matching index.
  *
- * + getFloor_byIndex(int): Floor*
- * + getFloor_byFloorNum(int): Floor*
+ * + getFloorData_byIndex(int): Floor*
+ * + getFloorData_byFloorNum(int): Floor*
  * + getElevator_byIndex(int): Elevator*
  * + getElevator_byCarId(int): Elevator*
- *      Getters to retrieve Floor and Elevator objects by either their Building
- *      data indices or assigned floor numbers/elevator car IDs.
+ *      Getters to retrieve floorData structs and Elevator objects by either
+ *      their Building data indices or assigned floor numbers/elevator car IDs.
  *
  * + Implementations of virtual functions from QAbstractTableModel
  *
@@ -93,6 +98,16 @@ class Building : public QAbstractTableModel {
     Building(int floorCount, int elevatorCount, int rowButtonCount = 0,
              int colButtonCount = 0, QObject *parent = nullptr);
 
+    /* Public data structs */
+    typedef struct floorData {
+        DataButton *upButton;
+        DataButton *downButton;
+
+        floorData() : upButton(nullptr), downButton(nullptr) {}
+        floorData(DataButton *up, DataButton *down)
+            : upButton(up), downButton(down) {}
+    } floorData;
+
     /* Public data members */
     const int floorCount;
     const int elevatorCount;
@@ -109,9 +124,10 @@ class Building : public QAbstractTableModel {
     bool buildingPowerOut() const;
 
     QVector<QWidget *> getEmergencyButtons();
+    QVector<QWidget *> getFloorButtons_byIndex(int);
 
-    Floor *getFloor_byIndex(int);
-    Floor *getFloor_byFloorNum(int);
+    floorData getFloorData_byIndex(int);
+    floorData getFloorData_byFloorNum(int);
 
     Elevator *getElevator_byIndex(int);
     Elevator *getElevator_byCarId(int);
@@ -128,7 +144,7 @@ class Building : public QAbstractTableModel {
 
    private:
     /* Private data members */
-    QMap<int, Floor *> floorNum_FloorData_Map;
+    QMap<int, floorData> floorNum_FloorData_Map;
     QMap<int, Elevator *> carId_Elevator_Map;
 
     DataButton *const buildingFireButton;

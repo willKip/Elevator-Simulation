@@ -9,7 +9,6 @@
 
 #include "DataButton.h"
 #include "Elevator.h"
-#include "Floor.h"
 
 Building::Building(int f, int e, int ar, int ac, QObject *parent)
     : QAbstractTableModel(parent),
@@ -24,13 +23,23 @@ Building::Building(int f, int e, int ar, int ac, QObject *parent)
     for (int f_ind = 0; f_ind < floorCount; ++f_ind) {
         int floorNum = index_to_floorNum(f_ind);
 
-        Floor *newFloor = new Floor(f_ind, floorNum, this);
+        DataButton *upButton = new DataButton(true, true, false, "UP ▲");
+        DataButton *downButton = new DataButton(true, true, false, "DOWN ▼");
 
-        floorNum_FloorData_Map.insert(floorNum, newFloor);
+        // Disable buttons appropriately at the very top or bottom floor.
+        if (f_ind == 0)
+            upButton->setDisabled(true);  // Top floor
+        else if (f_ind == (floorCount - 1))
+            downButton->setDisabled(true);  // Bottom floor
 
-        // Floor state changes imply building data changes overall
-        connect(newFloor, &Floor::floorStateChanged, this,
+        // Floor state changes mean building data has changed
+        connect(upButton, &DataButton::buttonCheckedUpdate, this,
                 &Building::buildingDataChanged);
+        connect(downButton, &DataButton::buttonCheckedUpdate, this,
+                &Building::buildingDataChanged);
+
+        floorNum_FloorData_Map.insert(floorNum,
+                                      floorData(upButton, downButton));
     }
 
     /* Initialize elevators */
@@ -55,8 +64,11 @@ Building::Building(int f, int e, int ar, int ac, QObject *parent)
 
         connect(newElevator, &Elevator::elevatorArrived, this,
                 [newElevator, this]() {
-                    this->getFloor_byFloorNum(newElevator->currentFloorNum)
-                        ->resetButtons();
+                    // Elevator arrived, unset that floor's buttons.
+                    Building::floorData fd = this->getFloorData_byFloorNum(
+                        newElevator->currentFloorNum);
+                    fd.upButton->setChecked(false);
+                    fd.downButton->setChecked(false);
                 });
 
         // Catch building emergency button changes in building
@@ -81,15 +93,15 @@ bool Building::buildingPowerOut() const {
 const QVector<int> Building::getQueuedFloors(Direction dir) const {
     QVector<int> matchingFloors;
 
-    // Floor data map is pre-sorted.
+    // Floor data map is pre-sorted, ascending order.
     for (auto i = floorNum_FloorData_Map.cbegin(),
               end = floorNum_FloorData_Map.cend();
          i != end; ++i) {
         int floorNum = i.key();
 
-        bool upMatched = (i.value()->pressedUp()) &&
+        bool upMatched = (i->upButton->isChecked()) &&
                          (dir == Direction::UP || dir == Direction::NONE);
-        bool downMatched = (i.value()->pressedDown()) &&
+        bool downMatched = (i->downButton->isChecked()) &&
                            (dir == Direction::DOWN || dir == Direction::NONE);
 
         if (upMatched || downMatched) matchingFloors.append(floorNum);
@@ -196,11 +208,11 @@ void Building::validateElevatorIndex(int index) const {
         throw "ERROR: Elevator carId (col) index out of data bounds";
 }
 
-Floor *Building::getFloor_byIndex(int index) {
-    return getFloor_byFloorNum(index_to_floorNum(index));
+Building::floorData Building::getFloorData_byIndex(int index) {
+    return getFloorData_byFloorNum(index_to_floorNum(index));
 }
 
-Floor *Building::getFloor_byFloorNum(int floorNum) {
+Building::floorData Building::getFloorData_byFloorNum(int floorNum) {
     if (!floorNum_FloorData_Map.contains(floorNum))
         throw "ERROR: Floor number trying to be accessed doesn't exist";
     return floorNum_FloorData_Map[floorNum];
@@ -223,4 +235,11 @@ const Elevator *Building::getElevator_byIndex(int index) const {
 QVector<QWidget *> Building::getEmergencyButtons() {
     return QVector<QWidget *>{qobject_cast<QWidget *>(buildingFireButton),
                               qobject_cast<QWidget *>(buildingPowerOutButton)};
+}
+
+QVector<QWidget *> Building::getFloorButtons_byIndex(int index) {
+    floorData fd = getFloorData_byIndex(index);
+
+    return QVector<QWidget *>{qobject_cast<QWidget *>(fd.upButton),
+                              qobject_cast<QWidget *>(fd.downButton)};
 }

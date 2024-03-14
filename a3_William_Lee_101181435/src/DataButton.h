@@ -10,6 +10,7 @@
  * Custom subclass of QPushButton, adding a common interface to handle a button
  * that is exposed in the UI, can be toggled or only emit a signal while it is
  * pressed down, and can emit signals continuously while pressed down.
+ * Can be subclassed further if specialized functionality is needed.
  *
  * Data Members:
  * # autoRepeatMs: int

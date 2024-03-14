@@ -16,15 +16,13 @@ SOURCES += \
     $${source_dir}/mainwindow.cpp \
     $${source_dir}/Building.cpp \
     $${source_dir}/Elevator.cpp \
-    $${source_dir}/DataButton.cpp \
-    $${source_dir}/Floor.cpp
+    $${source_dir}/DataButton.cpp
 
 HEADERS += \
     $${source_dir}/mainwindow.h \
     $${source_dir}/Building.h \
     $${source_dir}/Elevator.h \
-    $${source_dir}/DataButton.h \
-    $${source_dir}/Floor.h \
+    $${source_dir}/DataButton.h
     $${source_dir}/Direction.h
 
 FORMS += \
