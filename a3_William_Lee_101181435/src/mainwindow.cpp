@@ -127,7 +127,10 @@ MainWindow::MainWindow(QWidget *parent)
     }
 }
 
-MainWindow::~MainWindow() { delete ui; }
+MainWindow::~MainWindow() {
+    delete buildingModel;
+    delete ui;
+}
 
 void MainWindow::addIndexWidgets(int rowIndex, int colIndex,
                                  QVector<QWidget *> widgetsToAdd,

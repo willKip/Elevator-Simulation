@@ -15,7 +15,6 @@
 Elevator::Elevator(int initialFloorNum, Building *parentBuilding,
                    QObject *parent)
     : QObject(parent),
-      currentFloorNum(initialFloorNum),
       parentBuilding(parentBuilding),
       openButton(new DataButton(false, true, false, "Open ❰|❱")),
       closeButton(new DataButton(false, true, false, "Close ❱|❰")),
@@ -29,7 +28,8 @@ Elevator::Elevator(int initialFloorNum, Building *parentBuilding,
       movementTimer(new QTimer(this)),
       doorSpeedTimer(new QTimer(this)),
       doorWaitTimer(new QTimer(this)),
-      doorCloseFailures(0) {
+      doorCloseFailures(0),
+      currentFloorNum(initialFloorNum) {
     // Set initial obstacle simulation button state.
     obstacleButton->setDisabled(currentDoor == DoorState::CLOSED ? true
                                                                  : false);
