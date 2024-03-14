@@ -22,9 +22,9 @@ Floor::Floor(int i, int fn, Building *parentBuilding, QObject *parent)
     else if (index == (parentBuilding->floorCount - 1))
         downButton->setDisabled(true);  // Bottom floor
 
-    connect(upButton, &FloorButton::buttonCheckedChanged, this,
+    connect(upButton, &FloorButton::buttonCheckedUpdate, this,
             &Floor::floorStateChanged);
-    connect(downButton, &FloorButton::buttonCheckedChanged, this,
+    connect(downButton, &FloorButton::buttonCheckedUpdate, this,
             &Floor::floorStateChanged);
 };
 

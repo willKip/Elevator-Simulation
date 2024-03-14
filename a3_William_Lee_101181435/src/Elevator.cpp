@@ -38,9 +38,9 @@ Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
     closeButton->setText("Close ❱|❰");
 
     // Connect door override buttons
-    connect(openButton, &DataButton::buttonCheckedChanged, this,
+    connect(openButton, &DataButton::buttonCheckedUpdate, this,
             &Elevator::openDoors);
-    connect(closeButton, &DataButton::buttonCheckedChanged, this,
+    connect(closeButton, &DataButton::buttonCheckedUpdate, this,
             &Elevator::closeDoors);
 
     /* Set up emergency simulation buttons */
@@ -52,13 +52,13 @@ Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
     // Obstacle button is not relevant when door is closed.
     obstacleButton->setDisabled(doorState == DoorState::CLOSED ? true : false);
 
-    connect(fireButton, &DataButton::buttonCheckedChanged, this,
+    connect(fireButton, &DataButton::buttonCheckedUpdate, this,
             &Elevator::checkEmergency);
-    connect(obstacleButton, &DataButton::buttonCheckedChanged, this,
+    connect(obstacleButton, &DataButton::buttonCheckedUpdate, this,
             &Elevator::checkEmergency);
-    connect(helpButton, &DataButton::buttonCheckedChanged, this,
+    connect(helpButton, &DataButton::buttonCheckedUpdate, this,
             &Elevator::checkEmergency);
-    connect(overloadButton, &DataButton::buttonCheckedChanged, this,
+    connect(overloadButton, &DataButton::buttonCheckedUpdate, this,
             &Elevator::checkEmergency);
 
     for (int f_ind = 0; f_ind < parentBuilding->floorCount; ++f_ind) {
@@ -67,7 +67,7 @@ Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
 
         destinationButtons.insert(floorNum, destButton);
 
-        connect(destButton, &DestButton::buttonCheckedChanged, this,
+        connect(destButton, &DestButton::buttonCheckedUpdate, this,
                 &Elevator::determineMovement);
     }
 

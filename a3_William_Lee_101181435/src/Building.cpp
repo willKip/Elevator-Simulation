@@ -63,9 +63,9 @@ Building::Building(int f, int e, int ar, int ac, QObject *parent)
                 });
 
         // Catch building emergency button changes in building
-        connect(buildingFireButton, &DataButton::buttonCheckedChanged, this,
+        connect(buildingFireButton, &DataButton::buttonCheckedUpdate, this,
                 &Building::buildingDataChanged);
-        connect(buildingPowerOutButton, &DataButton::buttonCheckedChanged, this,
+        connect(buildingPowerOutButton, &DataButton::buttonCheckedUpdate, this,
                 &Building::buildingDataChanged);
 
         // Inform elevators to compute new movement when building data changes
