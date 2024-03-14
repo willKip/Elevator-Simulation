@@ -36,10 +36,11 @@ class MainWindow : public QMainWindow {
     Building *buildingModel;
     QTableView *buildingView;
 
-    // Add UI representations of buttons to building view/model in specified
-    // index. Horizontal layout unless specified otherwise in the boolean.
-    void addButtons(int rowIndex, int colIndex, QVector<QWidget *> buttonsToAdd,
-                    bool layoutIsVertical = false);
+    // Add fully aligned and distributed widgets to specified index of building
+    // View. Horizontal layout unless specified otherwise in the boolean.
+    void addIndexWidgets(int rowIndex, int colIndex,
+                         QVector<QWidget *> buttonsToAdd,
+                         bool layoutIsVertical = false);
 
    private slots:
     // Display specified text to the inline console.

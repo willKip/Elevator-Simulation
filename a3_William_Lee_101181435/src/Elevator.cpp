@@ -36,6 +36,9 @@ Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
         DestButton *destButton = new DestButton(floorNum);
 
         destinationButtons.insert(floorNum, destButton);
+
+        connect(destButton, &DestButton::buttonCheckedChanged, this,
+                &Elevator::determineMovement);
     }
 
     // Set up timers
@@ -64,11 +67,6 @@ Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
             &Elevator::openDoors);
     connect(closeButton, &DataButton::buttonCheckedChanged, this,
             &Elevator::closeDoors);
-    // Turn off floor's buttons since elevator arrived at floor.
-    // TODO: should turn off both if elevator has no panel buttons
-    // pressed todo: otherwise it is making a stop at the floor and
-    // resuming, disable todo: only the button along the direction
-    // of the elevator's movement.
 
     // If the movement timer completes without interruption, finalize the
     // movement and reflect the new position in the building.
@@ -157,25 +155,35 @@ bool Elevator::isMoving() const {
 }
 
 void Elevator::determineMovement() {
+    // Collect floors with their up/down floor buttons pressed or targeted by
+    // this elevator's destination button panel.
     QVector<int> queuedFloors = parentBuilding->getQueuedFloors();
-    // queuedFloors.append(queuedDestinations());
+    queuedFloors.append(queuedDestinations());
 
+    // No eligible floors queued
     if (queuedFloors.isEmpty()) {
-        // No eligible floors queued
         setMovement(MovementState::STOPPED);
         return;
     }
 
+    // Sort floors
+    std::sort(queuedFloors.begin(), queuedFloors.end());
+
+    // Remove duplicate floors
+    queuedFloors.erase(std::unique(queuedFloors.begin(), queuedFloors.end()),
+                       queuedFloors.end());
+
+    // Compute optimal floor to move to
     int targetFloor = closestQueuedFloor(queuedFloors);
 
     if (currentFloorNum == targetFloor) {
-        // Always open up to accommodate requests on current floor.
+        // Elevator stopped on current floor.
         setMovement(MovementState::STOPPED);
-        openDoors();  // TODO: order matters here, what to do?
+        openDoors();
+        destinationButtons[currentFloorNum]->setChecked(false);
         emit elevatorArrived();
     } else if (doorState == DoorState::CLOSED) {
-        // TODO: Elevator ready to move
-        // No buttons pressed on elevator's panel.
+        // Elevator ready to move to other floor.
         if (currentFloorNum < targetFloor) {
             setMovement(MovementState::UPWARDS);
         } else if (currentFloorNum > targetFloor) {
@@ -184,19 +192,23 @@ void Elevator::determineMovement() {
     }
 }
 
+void Elevator::ring() { emit textOut(QString("*ring!*")); }
+
 void Elevator::openDoors() {
     // Only attempt to open doors if the elevator is not moving
     if (isMoving()) return;
 
     switch (doorState) {
+        case DoorState::CLOSED:
+        case DoorState::CLOSING:
+            // Open the doors and ring bell
+            setDoorState(DoorState::OPENING);
+            doorSpeedTimer->start();  // Start door movement
+            ring();
+            break;
         case DoorState::OPEN:
             // Extend open time (reset timer)
             doorWaitTimer->start();
-            break;
-        case DoorState::CLOSED:
-        case DoorState::CLOSING:
-            setDoorState(DoorState::OPENING);
-            doorSpeedTimer->start();
             break;
         case DoorState::OPENING:
             // Already opening, no effect.
@@ -212,17 +224,18 @@ void Elevator::closeDoors() {
     if (isMoving()) return;
 
     switch (doorState) {
+        case DoorState::OPEN:
+        case DoorState::OPENING:
+            // Close the doors and ring bell
+            // TODO: handle obstacle state
+            setDoorState(DoorState::CLOSING);
+            doorWaitTimer->stop();    // Door timeout not relevant anymore
+            doorSpeedTimer->start();  // Start door movement
+            ring();
+            break;
         case DoorState::CLOSED:
         case DoorState::CLOSING:
             // Already closing or closed, no effect.
-            break;
-        case DoorState::OPEN:
-        case DoorState::OPENING:
-            // Force close doors before timeout.
-            // TODO: handle obstacle state
-            setDoorState(DoorState::CLOSING);
-            doorWaitTimer->stop();
-            doorSpeedTimer->start();
             break;
         default:
             throw "ERROR: Elevator in impossible DoorState";
@@ -254,11 +267,8 @@ const QVector<int> Elevator::queuedDestinations() const {
     QVector<int> queued;
 
     for (auto i = destinationButtons.cbegin(), end = destinationButtons.cend();
-         i != end; ++i) {
-        if (i.value()->isChecked()) {
-            queued.append(i.key());
-        }
-    }
+         i != end; ++i)
+        if (i.value()->isChecked()) queued.append(i.key());
 
     return queued;
 }
@@ -316,4 +326,74 @@ QVector<QWidget *> Elevator::getDestButtonWidgets() {
         toReturn.append(qobject_cast<QWidget *>(i.value()));
 
     return toReturn;
+}
+
+const QString Elevator::getTextDisplay() const {
+    /* Emergency */
+    switch (emergencyState) {
+        case EmergencyState::HELP:
+            return "HELP: (connecting to building safety service or 911...)";
+        case EmergencyState::FIRE:
+            if (currentMovement == MovementState::STOPPED)
+                return "FIRE: Safe floor reached. Please disembark.";
+            else
+                return "FIRE: Moving to safe floor.";
+        case EmergencyState::POWER_OUT:
+            if (currentMovement == MovementState::STOPPED)
+                return "POWER OUTAGE: Safe floor reached. Please disembark.";
+            else
+                return "POWER OUTAGE: Running on emergency power. Moving to "
+                       "safe floor.";
+        case EmergencyState::OVERLOAD:
+            return "OVERLOAD: Please reduce the load.";
+        case EmergencyState::DOOR_STUCK:  // TODO
+        case EmergencyState::NONE:
+        default:
+            break;
+    }
+
+    switch (currentMovement) {
+        case MovementState::UPWARDS:
+            return "▲ Moving UP...";
+        case MovementState::DOWNWARDS:
+            return "▼ Moving DOWN...";
+        case MovementState::STOPPED:
+            return "- Stopped.";
+        default:
+            break;
+    }
+
+    return "";
+}
+
+void Elevator::setEmergency(EmergencyState state) {
+    if (emergencyState != state) {
+        emergencyState = state;
+        emit elevatorDataChanged();
+
+        // Audio warnings (using inline console instead of actual audio output)
+        switch (emergencyState) {
+            case EmergencyState::FIRE:
+                if (currentMovement == MovementState::STOPPED)
+                    emit textOut("Safe floor reached. Please disembark.");
+                else
+                    emit textOut(
+                        "A fire has been detected. Moving towards safe floor.");
+            case EmergencyState::POWER_OUT:
+                if (currentMovement == MovementState::STOPPED)
+                    emit textOut("Safe floor reached. Please disembark.");
+                else
+                    emit textOut(
+                        "A power outage has been detected. Moving towards safe "
+                        "floor.");
+            case EmergencyState::OVERLOAD:
+                emit textOut("Overload. Please reduce the load.");
+            case EmergencyState::HELP:
+                emit textOut("(connected to building safety service or 911)");
+            case EmergencyState::DOOR_STUCK:  // TODO
+            case EmergencyState::NONE:
+            default:
+                break;
+        }
+    }
 }

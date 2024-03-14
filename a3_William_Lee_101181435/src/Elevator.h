@@ -53,6 +53,9 @@ class Elevator : public QObject {
     // Return true if the elevator is currently moving.
     bool isMoving() const;
 
+    /* Return appropriate text for the current elevator state. */
+    const QString getTextDisplay() const;
+
     // Return QWidget pointers to elevator's buttons for adding to UI
     QVector<QWidget *> getDoorButtonWidgets();
     QVector<QWidget *> getDestButtonWidgets();
@@ -64,6 +67,9 @@ class Elevator : public QObject {
    signals:
     // Fired when an elevator has stopped at a location to take passengers.
     void elevatorArrived();
+
+   signals:
+    void textOut(const QString &);
 
    public slots:
     // Called by the building every time there is a change to the building state
@@ -105,9 +111,13 @@ class Elevator : public QObject {
     /**
      * Private methods
      */
-    // Private setters that emit signals appropriately on data change
+    /* Private setters that emit signals or trigger responses on data change */
     void setMovement(MovementState);
     void setDoorState(DoorState);
+    void setEmergency(EmergencyState);
+
+    // Ring the bell of the elevator.
+    void ring();
 
     // Return a list of floors queued on the elevator panel.
     const QVector<int> queuedDestinations() const;

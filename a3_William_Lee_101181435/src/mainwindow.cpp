@@ -1,8 +1,10 @@
 #include "mainwindow.h"
 
 #include <QBoxLayout>
+#include <QLCDNumber>
 #include <QLabel>
 #include <QScrollBar>
+#include <QSizePolicy>
 #include <QString>
 #include <QVector>
 #include <QVectorIterator>
@@ -38,29 +40,82 @@ MainWindow::MainWindow(QWidget *parent)
     for (int f = 0; f < buildingModel->floorCount; ++f) {
         Floor *fd = buildingModel->getFloor_byIndex(f);
 
-        addButtons(f, buildingModel->elevatorCount, fd->getButtonWidgets(),
-                   false);
+        addIndexWidgets(f, buildingModel->elevatorCount, fd->getButtonWidgets(),
+                        false);
     }
 
-    // Add panel and display buttons for each elevator.
+    /**
+     * Add panel and display buttons for each elevator, connect to text output,
+     * add buttons to simulate emergency situations.
+     */
     for (int e = 0; e < buildingModel->elevatorCount; ++e) {
         Elevator *el = buildingModel->getElevator_byIndex(e);
 
-        // First row: open/close buttons
-        addButtons(buildingModel->floorCount, e, el->getDoorButtonWidgets(),
-                   false);
+        // Receive text output signals for displaying in inline console
+        connect(el, &Elevator::textOut, this, [el, this](const QString &text) {
+            this->inlineConsoleDisplay(
+                QString("Elevator %1: ").arg(el->carId).append(text));
+        });
 
-        // Second row: Destination buttons, lower floors first
-        addButtons(buildingModel->floorCount + 1, e, el->getDestButtonWidgets(),
-                   false);
+        // Row to put widgets on
+        int addRowIndex = buildingModel->floorCount;
+
+        /**
+         * First row: Display panel
+         */
+        /* Floor display widget */
+        QLCDNumber *floorDisplay = new QLCDNumber();
+
+        // Set relative size
+        QSizePolicy floorSize(QSizePolicy::Preferred, QSizePolicy::Preferred);
+        floorSize.setHorizontalStretch(1);
+        floorDisplay->setSizePolicy(floorSize);
+
+        // Get max digit count needed
+        floorDisplay->setDigitCount(
+            QString("%1").arg(buildingModel->floorCount).length());
+
+        /* Text display widget */
+        QLabel *textDisplay = new QLabel();
+
+        // Set relative size
+        QSizePolicy textDispSize(QSizePolicy::Preferred,
+                                 QSizePolicy::Preferred);
+        textDispSize.setHorizontalStretch(3);
+        textDisplay->setSizePolicy(textDispSize);
+
+        // Make text wrap around
+        textDisplay->setWordWrap(true);
+
+        // Initial values
+        floorDisplay->display(el->currentFloorNum);
+        textDisplay->setText(el->getTextDisplay());
+
+        // Update displays when there is a change to elevator data
+        connect(el, &Elevator::elevatorDataChanged, floorDisplay,
+                [el, floorDisplay, textDisplay]() {
+                    floorDisplay->display(el->currentFloorNum);
+                    textDisplay->setText(el->getTextDisplay());
+                });
+
+        addIndexWidgets(addRowIndex++, e,
+                        QVector<QWidget *>{floorDisplay, textDisplay}, false);
+
+        /* Second row: open/close buttons */
+        addIndexWidgets(addRowIndex++, e, el->getDoorButtonWidgets(), false);
+
+        /* Third row: Destination buttons, lower floors first */
+        addIndexWidgets(addRowIndex++, e, el->getDestButtonWidgets(), false);
+
+        /* Fourth row: Simulate emergencies */
     }
 }
 
 MainWindow::~MainWindow() { delete ui; }
 
-void MainWindow::addButtons(int rowIndex, int colIndex,
-                            QVector<QWidget *> buttonsToAdd,
-                            bool layoutIsVertical) {
+void MainWindow::addIndexWidgets(int rowIndex, int colIndex,
+                                 QVector<QWidget *> widgetsToAdd,
+                                 bool layoutIsVertical) {
     // Container widget
     QWidget *newContainer = new QWidget;
 
@@ -71,7 +126,7 @@ void MainWindow::addButtons(int rowIndex, int colIndex,
     newLayout->setSpacing(0);
     newLayout->setContentsMargins(0, 0, 0, 0);
 
-    QVectorIterator<QWidget *> i(buttonsToAdd);
+    QVectorIterator<QWidget *> i(widgetsToAdd);
     while (i.hasNext()) newLayout->addWidget(i.next());
 
     ui->buildingView->setIndexWidget(buildingModel->index(rowIndex, colIndex),
