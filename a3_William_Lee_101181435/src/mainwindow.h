@@ -14,6 +14,7 @@ class MainWindow;
 }
 QT_END_NAMESPACE
 
+// TODO: cleanup
 class MainWindow : public QMainWindow {
     Q_OBJECT
 

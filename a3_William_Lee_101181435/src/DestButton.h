@@ -5,6 +5,7 @@
 
 #include "DataButton.h"
 
+// TODO: cleanup
 // TODO: doc
 class DestButton : public DataButton {
     Q_OBJECT

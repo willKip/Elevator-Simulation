@@ -8,6 +8,7 @@
 #include "Direction.h"
 
 // TODO: documentation
+// TODO: cleanup
 class FloorButton : public DataButton {
     Q_OBJECT
 

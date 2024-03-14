@@ -6,6 +6,7 @@
 #include "DataButton.h"
 #include "Direction.h"
 
+// TODO: cleanup
 FloorButton::FloorButton(int f, Direction d, bool c, QString objectName,
                          QWidget *parent)
     : DataButton(true, true, c, objectName, parent), floorNum(f), direction(d) {

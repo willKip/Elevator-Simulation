@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QString>
+// TODO: cleanup
 
 DestButton::DestButton(int destFloorNum, QString objectName, QWidget *parent)
     : DataButton(true, false, false, objectName, parent),

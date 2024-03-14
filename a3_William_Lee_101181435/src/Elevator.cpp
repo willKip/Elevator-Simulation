@@ -12,6 +12,7 @@
 #include "DataButton.h"
 #include "DestButton.h"
 
+// TODO: cleanup
 Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
                    Building *parentBuilding, QObject *parent)
     : QObject(parent),

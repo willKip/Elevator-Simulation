@@ -5,6 +5,7 @@
 
 #include "Building.h"
 
+// TODO: cleanup
 Floor::Floor(int i, int fn, Building *parentBuilding, QObject *parent)
     : QObject(parent),
       index(i),

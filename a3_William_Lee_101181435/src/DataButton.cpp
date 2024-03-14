@@ -4,6 +4,8 @@
 #include <QSizePolicy>
 #include <QString>
 
+// TODO: cleanup
+
 // Static initialization
 const int DataButton::autoRepeatMs = 1000;  // 1 second
 

@@ -20,6 +20,8 @@ class Building;
  * - carId      Unique identifying ID of elevator within the building.
  * -
  */
+// TODO: cleanup
+// TODO: doc
 class Elevator : public QObject {
     Q_OBJECT
    public:

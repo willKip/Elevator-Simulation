@@ -11,6 +11,7 @@ class Building;
 
 // Helper data class for better management of associated data
 // TODO: documentation
+// TODO: cleanup
 class Floor : public QObject {
     Q_OBJECT
    public:

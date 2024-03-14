@@ -13,6 +13,7 @@
  * doDataToggle Pressing and holding will emit signal repeatedly
  * doPressHold If not enabled, button will only emit the signal when pressed.
  */
+// TODO: cleanup
 // TODO: documentation
 class DataButton : public QPushButton {
     Q_OBJECT

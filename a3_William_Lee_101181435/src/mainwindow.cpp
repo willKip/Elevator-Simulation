@@ -15,6 +15,7 @@
 #include "Floor.h"
 #include "ui_mainwindow.h"
 
+// TODO: cleanup
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
