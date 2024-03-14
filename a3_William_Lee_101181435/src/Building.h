@@ -2,7 +2,6 @@
 #define BUILDING_H
 
 #include <QAbstractTableModel>
-#include <QHash>
 #include <QMap>
 #include <QVector>
 
@@ -13,99 +12,138 @@ class Elevator;
 class Floor;
 class DataButton;
 
-/**
- * Class simulating a building with elevators.
- * In charge of storing and altering elevator locations and floor button states
- * according to requests.
- * Extends QAbstractTableModel, serving the role of Model in the MVC paradigm.
+/** Simulates a building with elevators.
  *
- * Member variables:
- * - floorCount        Number of floors in the building.
- * - elevatorCount     Number of elevators in the building.
- * - buildingTable      2-dimensional matrix with rows as floors, columns as
- *                      elevators.
+ * Extends QAbstractTableModel, serving the role of Model in the MVC paradigm.
+ * The role of the building in the simulation, holding all the floors and
+ * elevators and providing a table-like interface to access through a Qt view.
+ *
+ * Data Members:
+ * + floorCount: int
+ *      Number of floors in the building. Floors correspond to rows.
+ * + elevatorCount: int
+ *      Number of elevators in the building. Elevators correspond to columns.
+ * + rowButtonCount: int
+ *      Number of additional rows allotted for buttons
+ * + colButtonCount: int
+ *      Number of additional columns allotted for buttons
+ *
+ * - floorNum_FloorData_Map: QMap<int, Floor *>
+ * - carId_Elevator_Map: QMap<int, Elevator *>
+ *      Mappings of floor numbers and elevator IDs to their corresponding
+ *      Floor and Elevator pointers.
+ *
+ * - buildingFireButton: DataButton *
+ * - buildingPowerOutButton: DataButton *
+ *      Buttons for toggling simulated building-wide emergencies.
+ *
+ * Class Methods:
+ * + index_to_floorNum(int): int
+ * + index_to_carId(int): int
+ *      Defines the relationship between data indices used in this class and
+ *      floor numbers / elevator car IDs.
+ *
+ * + getQueuedFloors(Direction): QVector<int>
+ *      Returns a list of floor numbers where the buttons active on the floor
+ *      match the direction given. If no direction (Direction::NONE) is given,
+ *      return all floors with any direction active.
+ *
+ * + buildingOnFire(): bool
+ * + buildingPowerOut(): bool
+ *      Returns true if the related emergency is active in the building.
+ *
+ * + getEmergencyButtons(): QVector<QWidget *>
+ *      Return Qt widget pointers to the emergency simulation buttons of the
+ *      building.
+ *
+ * + getFloor_byIndex(int): Floor*
+ * + getFloor_byFloorNum(int): Floor*
+ * + getElevator_byIndex(int): Elevator*
+ * + getElevator_byCarId(int): Elevator*
+ *      Getters to retrieve Floor and Elevator objects by either their Building
+ *      data indices or assigned floor numbers/elevator car IDs.
+ *
+ * + Implementations of virtual functions from QAbstractTableModel
+ *
+ * - getElevator_byIndex(int) const: const Elevator *
+ *      const type getter method needed in data(). Retrieves a constant
+ *      version of the elevator by index for updating the view.
+ *
+ * - isFloorDataIndex(int): bool
+ * - isElevatorIndex(int): bool
+ *      Returns true if index accesses are within the floor/elevator bounds
+ *
+ * - validateFloorDataIndex(int): void
+ * - validateElevatorIndex(int): void
+ *      Throws an exception if the index access is not on a valid
+ *      floor/elevator bound.
+ *
+ * - updateColumn(int): void
+ *      Updates the column specified to reflect data changes in the view.
+ *
+ * Signals:
+ * + buildingDataChanged(): void
+ *      Emitted when there is a change to data in the building.
+ *      (e.g. Floor button pressed, elevator position changed)
  */
-// TODO: description
 class Building : public QAbstractTableModel {
     Q_OBJECT
 
    public:
-    enum class EmergencyState { FIRE, POWER_OUT };
-
     Building(int floorCount, int elevatorCount, int rowButtonCount = 0,
              int colButtonCount = 0, QObject *parent = nullptr);
 
-    const int floorCount;     // Each floor gets a row
-    const int elevatorCount;  // Each elevator gets a column
-
-    // Additional non-data rows and columns allocated for buttons.
+    /* Public data members */
+    const int floorCount;
+    const int elevatorCount;
     const int rowButtonCount;
     const int colButtonCount;
 
-    // Implement virtual functions from QAbstractTableModel
+    /* Public methods */
+    int index_to_floorNum(int) const;
+    int index_to_carId(int) const;
+
+    const QVector<int> getQueuedFloors(Direction = Direction::NONE) const;
+
+    bool buildingOnFire() const;
+    bool buildingPowerOut() const;
+
+    QVector<QWidget *> getEmergencyButtons();
+
+    Floor *getFloor_byIndex(int);
+    Floor *getFloor_byFloorNum(int);
+
+    Elevator *getElevator_byIndex(int);
+    Elevator *getElevator_byCarId(int);
+
+    /* Implemented virtual functions from QAbstractTableModel */
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     int columnCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index,
                   int role = Qt::DisplayRole) const override;
     QVariant headerData(int section, Qt::Orientation, int role) const override;
 
-    // Access methods for floor and elevator data
-    Floor *getFloor_byIndex(int index);
-    Floor *getFloor_byFloorNum(int floorNum);
-    Elevator *getElevator_byIndex(int index);
-    Elevator *getElevator_byCarId(int carId);
-
-    // Defines how floor and elevator IDs are assigned relative to their
-    // indices.
-    int index_to_floorNum(int index) const;
-    int index_to_carId(int index) const;
-
-    // Get an ascending list of floor numbers where the floors have pressed
-    // buttons (pending elevator requests). If a direction is specified, return
-    // only the floors that have the matching direction's buttons pressed.
-    const QVector<int> getQueuedFloors(Direction = Direction::NONE) const;
-
-    // Update a specific column (elevator) in the view.
-    void updateColumn(int col);
-
-    // Check building-wide emergency states.
-    bool buildingOnFire() const;
-    bool buildingPowerOut() const;
-
-    // Return building emergency button widgets.
-    QVector<QWidget *> getEmergencyButtons();
-
    signals:
-    // Fired when there is a change to building data (e.g. floor button pressed,
-    // elevator at new floor)
     void buildingDataChanged();
 
    private:
-    // Const access method for data function use
-    const Elevator *getElevator_byIndex(int index) const;
-
-    // Returns true if index accesses are on the floor/elevator data.
-    bool isFloorDataIndex(int index) const;
-    bool isElevatorIndex(int index) const;
-
-    // Throws exception if index access would be outside the floor/elevator data
-    // range.
-    void validateFloorDataIndex(int index) const;
-    void validateElevatorIndex(int index) const;
-
-    /**
-     * Ascending order mappings of floor numbers and elevator IDs to
-     * corresponding floor and elevator data classes.
-     */
+    /* Private data members */
     QMap<int, Floor *> floorNum_FloorData_Map;
     QMap<int, Elevator *> carId_Elevator_Map;
 
-    // Maps of building object table indices to floor numbers and elevator IDs.
-    QHash<int, int> index_floorNum_Map;
-    QHash<int, int> index_carId_Map;
-
-    // Building-wide emergency simulation buttons
     DataButton *const buildingFireButton;
     DataButton *const buildingPowerOutButton;
+
+    /* Private methods */
+    const Elevator *getElevator_byIndex(int) const;
+
+    bool isFloorDataIndex(int) const;
+    bool isElevatorIndex(int) const;
+
+    void validateFloorDataIndex(int) const;
+    void validateElevatorIndex(int) const;
+
+    void updateColumn(int);
 };
+
 #endif /* BUILDING_H */

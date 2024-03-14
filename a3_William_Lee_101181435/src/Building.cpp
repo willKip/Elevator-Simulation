@@ -2,7 +2,6 @@
 
 #include <QAbstractTableModel>
 #include <QBrush>
-#include <QHash>
 #include <QMap>
 #include <QRandomGenerator>
 #include <QString>
@@ -20,40 +19,40 @@ Building::Building(int f, int e, int ar, int ac, QObject *parent)
       colButtonCount(ac),
       buildingFireButton(new DataButton(true, false, false)),
       buildingPowerOutButton(new DataButton(true, false, false)) {
-    /* Building emergency buttons */
+    /* Initialize building emergency buttons */
     buildingFireButton->setText("Building\nFIRE");
     buildingPowerOutButton->setText("Building\nPOWER OUT");
 
+    /* Initialize floors */
     for (int f_ind = 0; f_ind < floorCount; ++f_ind) {
-        // Initialize floors (connection to UI buttons done after in MainWindow)
-
         int floorNum = index_to_floorNum(f_ind);
 
         Floor *newFloor = new Floor(f_ind, floorNum, this);
 
-        index_floorNum_Map.insert(f_ind, floorNum);
         floorNum_FloorData_Map.insert(floorNum, newFloor);
 
+        // Floor state changes imply building data changes overall
         connect(newFloor, &Floor::floorStateChanged, this,
                 &Building::buildingDataChanged);
     }
 
+    /* Initialize elevators */
     for (int e_ind = 0; e_ind < elevatorCount; ++e_ind) {
-        // Initialize elevators
-
-        // Generate random valid starting floor index
-        int initFloorIndex = QRandomGenerator::global()->bounded(0, floorCount);
-        int initFloorNum = index_to_floorNum(initFloorIndex);
+        // Generate random starting floor for each elevator
+        int initFloorNum = index_to_floorNum(
+            QRandomGenerator::global()->bounded(0, floorCount));
 
         int carId = index_to_carId(e_ind);
-
-        index_carId_Map.insert(e_ind, carId);
 
         Elevator *newElevator =
             new Elevator(e_ind, carId, initFloorNum, this, this);
 
+        carId_Elevator_Map.insert(carId, newElevator);
+
+        // Catch changes in elevator to update building data
         connect(newElevator, &Elevator::elevatorDataChanged, this,
                 [newElevator, this]() {
+                    emit buildingDataChanged();
                     this->updateColumn(newElevator->buildingColIndex);
                 });
 
@@ -63,19 +62,15 @@ Building::Building(int f, int e, int ar, int ac, QObject *parent)
                         ->resetButtons();
                 });
 
-        // Inform of building state change if building emergency buttons change
-        // state
+        // Catch building emergency button changes in building
         connect(buildingFireButton, &DataButton::buttonCheckedChanged, this,
                 &Building::buildingDataChanged);
         connect(buildingPowerOutButton, &DataButton::buttonCheckedChanged, this,
                 &Building::buildingDataChanged);
 
-        // Inform elevator to compute new movement when parent building's data
-        // changes.
+        // Inform elevators to compute new movement when building data changes
         connect(this, &Building::buildingDataChanged, newElevator,
                 &Elevator::determineMovement);
-
-        carId_Elevator_Map.insert(carId, newElevator);
     }
 }
 
@@ -94,6 +89,7 @@ const QVector<int> Building::getQueuedFloors(Direction dir) const {
               end = floorNum_FloorData_Map.cend();
          i != end; ++i) {
         int floorNum = i.key();
+
         bool upMatched = (i.value()->pressedUp()) &&
                          (dir == Direction::UP || dir == Direction::NONE);
         bool downMatched = (i.value()->pressedDown()) &&
@@ -107,7 +103,6 @@ const QVector<int> Building::getQueuedFloors(Direction dir) const {
 }
 
 void Building::updateColumn(int col) {
-    emit buildingDataChanged();
     emit dataChanged(index(0, col), index(floorCount, col));
 }
 
@@ -123,7 +118,7 @@ QVariant Building::data(const QModelIndex &index, int role) const {
     int row = index.row();
     int col = index.column();
 
-    // Only access data for rows and columns not reserved for button placement.
+    // Only access data for elevator/floor cells, not the button cells
     if (isFloorDataIndex(row) && isElevatorIndex(col)) {
         const Elevator *elevator = getElevator_byIndex(col);
 
@@ -147,10 +142,10 @@ QVariant Building::data(const QModelIndex &index, int role) const {
                             return QBrush(Qt::cyan);
                     }
                 case Qt::TextAlignmentRole:
-                    // Align text within cell.
-                    // Int conversion is a hack to achieve the horizontal center
-                    // align + vertical top align (the flags are internally
-                    // bitstrings).
+                    /* Align text within cell.
+                      Int conversion is a hack to achieve the horizontal center
+                      align + vertical top align (the flags are internally
+                      bitstrings), bug in Qt */
                     return int(Qt::AlignHCenter | Qt::AlignTop);
             }
         }
@@ -165,11 +160,11 @@ QVariant Building::headerData(int section, Qt::Orientation orientation,
         switch (orientation) {
             case Qt::Horizontal:
                 if (isElevatorIndex(section))
-                    return QString("Elevator %1").arg(index_carId_Map[section]);
+                    return QString("Elevator %1").arg(index_to_carId(section));
                 break;
             case Qt::Vertical:
                 if (isFloorDataIndex(section))
-                    return QString("F%1").arg(index_floorNum_Map[section]);
+                    return QString("F%1").arg(index_to_floorNum(section));
                 break;
         }
     }
@@ -205,11 +200,9 @@ void Building::validateElevatorIndex(int index) const {
 }
 
 Floor *Building::getFloor_byIndex(int index) {
-    validateFloorDataIndex(index);
-    if (!index_floorNum_Map.contains(index))
-        throw "ERROR: Nonexistent index to number mapping";
-    return getFloor_byFloorNum(index_floorNum_Map[index]);
+    return getFloor_byFloorNum(index_to_floorNum(index));
 }
+
 Floor *Building::getFloor_byFloorNum(int floorNum) {
     if (!floorNum_FloorData_Map.contains(floorNum))
         throw "ERROR: Floor number trying to be accessed doesn't exist";
@@ -217,11 +210,9 @@ Floor *Building::getFloor_byFloorNum(int floorNum) {
 }
 
 Elevator *Building::getElevator_byIndex(int index) {
-    validateElevatorIndex(index);
-    if (!index_carId_Map.contains(index))
-        throw "ERROR: Nonexistent index to carId mapping";
-    return getElevator_byCarId(index_carId_Map[index]);
+    return getElevator_byCarId(index_to_carId(index));
 }
+
 Elevator *Building::getElevator_byCarId(int carId) {
     if (!carId_Elevator_Map.contains(carId))
         throw "ERROR: Elevator trying to be accessed doesn't exist";
@@ -229,14 +220,7 @@ Elevator *Building::getElevator_byCarId(int carId) {
 }
 
 const Elevator *Building::getElevator_byIndex(int index) const {
-    validateElevatorIndex(index);
-    if (!index_carId_Map.contains(index))
-        throw "ERROR: Nonexistent index to carId mapping";
-    int carId = index_carId_Map[index];
-
-    if (!carId_Elevator_Map.contains(carId))
-        throw "ERROR: Elevator trying to be accessed doesn't exist";
-    return carId_Elevator_Map[carId];
+    return carId_Elevator_Map[index_to_carId(index)];
 }
 
 QVector<QWidget *> Building::getEmergencyButtons() {
