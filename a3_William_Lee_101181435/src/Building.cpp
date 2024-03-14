@@ -8,6 +8,7 @@
 #include <QString>
 #include <QVector>
 
+#include "DataButton.h"
 #include "Elevator.h"
 #include "Floor.h"
 
@@ -16,7 +17,13 @@ Building::Building(int f, int e, int ar, int ac, QObject *parent)
       floorCount(f),
       elevatorCount(e),
       rowButtonCount(ar),
-      colButtonCount(ac) {
+      colButtonCount(ac),
+      buildingFireButton(new DataButton(true, false, false)),
+      buildingPowerOutButton(new DataButton(true, false, false)) {
+    /* Building emergency buttons */
+    buildingFireButton->setText("Building\nFIRE");
+    buildingPowerOutButton->setText("Building\nPOWER OUT");
+
     for (int f_ind = 0; f_ind < floorCount; ++f_ind) {
         // Initialize floors (connection to UI buttons done after in MainWindow)
 
@@ -56,6 +63,13 @@ Building::Building(int f, int e, int ar, int ac, QObject *parent)
                         ->resetButtons();
                 });
 
+        // Inform of building state change if building emergency buttons change
+        // state
+        connect(buildingFireButton, &DataButton::buttonCheckedChanged, this,
+                &Building::buildingDataChanged);
+        connect(buildingPowerOutButton, &DataButton::buttonCheckedChanged, this,
+                &Building::buildingDataChanged);
+
         // Inform elevator to compute new movement when parent building's data
         // changes.
         connect(this, &Building::buildingDataChanged, newElevator,
@@ -63,6 +77,13 @@ Building::Building(int f, int e, int ar, int ac, QObject *parent)
 
         carId_Elevator_Map.insert(carId, newElevator);
     }
+}
+
+bool Building::buildingOnFire() const {
+    return buildingFireButton->isChecked();
+}
+bool Building::buildingPowerOut() const {
+    return buildingPowerOutButton->isChecked();
 }
 
 const QVector<int> Building::getQueuedFloors(Direction dir) const {
@@ -111,19 +132,26 @@ QVariant Building::data(const QModelIndex &index, int role) const {
                 case Qt::DisplayRole:
                     // Key data, rendered as text
                     return elevator->getElevatorString();
-                    break;
                 case Qt::BackgroundRole:
                     // Background brush
                     // Color the cell of current elevator location
-                    return QBrush(Qt::cyan);
-                    break;
+                    switch (elevator->getDoorState()) {
+                        case Elevator::DoorState::OPENING:
+                            return QBrush(Qt::darkGreen);
+                        case Elevator::DoorState::OPEN:
+                            return QBrush(Qt::green);
+                        case Elevator::DoorState::CLOSING:
+                            return QBrush(Qt::darkCyan);
+                        case Elevator::DoorState::CLOSED:
+                        default:
+                            return QBrush(Qt::cyan);
+                    }
                 case Qt::TextAlignmentRole:
                     // Align text within cell.
                     // Int conversion is a hack to achieve the horizontal center
                     // align + vertical top align (the flags are internally
                     // bitstrings).
                     return int(Qt::AlignHCenter | Qt::AlignTop);
-                    break;
             }
         }
     }
@@ -209,4 +237,9 @@ const Elevator *Building::getElevator_byIndex(int index) const {
     if (!carId_Elevator_Map.contains(carId))
         throw "ERROR: Elevator trying to be accessed doesn't exist";
     return carId_Elevator_Map[carId];
+}
+
+QVector<QWidget *> Building::getEmergencyButtons() {
+    return QVector<QWidget *>{qobject_cast<QWidget *>(buildingFireButton),
+                              qobject_cast<QWidget *>(buildingPowerOutButton)};
 }

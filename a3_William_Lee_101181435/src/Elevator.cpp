@@ -19,17 +19,46 @@ Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
       carId(carId),
       currentFloorNum(initialFloorNum),
       parentBuilding(parentBuilding),
-      openButton(new DataButton(false, true, false, "")),
-      closeButton(new DataButton(false, true, false, "")),
+      openButton(new DataButton(false, true)),
+      closeButton(new DataButton(false, true)),
+      fireButton(new DataButton(true, false)),
+      obstacleButton(new DataButton(true, false)),
+      helpButton(new DataButton(true, false)),
+      overloadButton(new DataButton(true, false)),
       currentMovement(MovementState::STOPPED),
       doorState(DoorState::CLOSED),
       emergencyState(EmergencyState::NONE),
       movementTimer(new QTimer(this)),
       doorSpeedTimer(new QTimer(this)),
-      doorWaitTimer(new QTimer(this)) {
-    // Set up buttons
+      doorWaitTimer(new QTimer(this)),
+      doorCloseFailures(0) {
+    /* Set up door buttons */
     openButton->setText("Open ❰|❱");
     closeButton->setText("Close ❱|❰");
+
+    // Connect door override buttons
+    connect(openButton, &DataButton::buttonCheckedChanged, this,
+            &Elevator::openDoors);
+    connect(closeButton, &DataButton::buttonCheckedChanged, this,
+            &Elevator::closeDoors);
+
+    /* Set up emergency simulation buttons */
+    fireButton->setText("FIRE");
+    obstacleButton->setText("DOOR\n\nOBST\nACLE");
+    helpButton->setText("HELP");
+    overloadButton->setText("OVER\nLOAD");
+
+    // Obstacle button is not relevant when door is closed.
+    obstacleButton->setDisabled(doorState == DoorState::CLOSED ? true : false);
+
+    connect(fireButton, &DataButton::buttonCheckedChanged, this,
+            &Elevator::checkEmergency);
+    connect(obstacleButton, &DataButton::buttonCheckedChanged, this,
+            &Elevator::checkEmergency);
+    connect(helpButton, &DataButton::buttonCheckedChanged, this,
+            &Elevator::checkEmergency);
+    connect(overloadButton, &DataButton::buttonCheckedChanged, this,
+            &Elevator::checkEmergency);
 
     for (int f_ind = 0; f_ind < parentBuilding->floorCount; ++f_ind) {
         int floorNum = parentBuilding->index_to_floorNum(f_ind);
@@ -51,7 +80,19 @@ Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
     connect(doorSpeedTimer, &QTimer::timeout, this, [this]() {
         switch (this->doorState) {
             case DoorState::CLOSING:
-                this->setDoorState(DoorState::CLOSED);
+                // Check sensors to see if door closure can be completed
+                if (this->doorSensorSeesObstacle()) {
+                    this->doorCloseFailures++;
+                    emit this->textOut(QString("(Light sensors detected "
+                                               "obstacle! Failures: %1/%2)")
+                                           .arg(this->doorCloseFailures)
+                                           .arg(this->doorCloseFailThreshold));
+                    this->openDoors();
+                } else {
+                    this->doorCloseFailures = 0;
+                    this->setDoorState(DoorState::CLOSED);
+                }
+                this->checkEmergency();
                 break;
             case DoorState::OPENING:
                 this->setDoorState(DoorState::OPEN);
@@ -61,12 +102,6 @@ Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
                 break;
         }
     });
-
-    // Connect door override buttons
-    connect(openButton, &DataButton::buttonCheckedChanged, this,
-            &Elevator::openDoors);
-    connect(closeButton, &DataButton::buttonCheckedChanged, this,
-            &Elevator::closeDoors);
 
     // If the movement timer completes without interruption, finalize the
     // movement and reflect the new position in the building.
@@ -91,6 +126,8 @@ Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
     });
 }
 
+Elevator::DoorState Elevator::getDoorState() const { return doorState; }
+
 const QString Elevator::getElevatorString() const {
     QString movementStr;
     QString doorStr;
@@ -111,16 +148,16 @@ const QString Elevator::getElevatorString() const {
     }
     switch (doorState) {
         case Elevator::DoorState::CLOSED:
-            doorStr = "(closed)";
+            doorStr = "Closed";
             break;
         case Elevator::DoorState::CLOSING:
-            doorStr = "(closing...)";
+            doorStr = "Closing";
             break;
         case Elevator::DoorState::OPENING:
-            doorStr = "(opening...)";
+            doorStr = "Opening";
             break;
         case Elevator::DoorState::OPEN:
-            doorStr = "(open)";
+            doorStr = "Open";
             break;
         default:
             throw "ERROR: Invalid door state enum";
@@ -154,27 +191,43 @@ bool Elevator::isMoving() const {
     return currentMovement != MovementState::STOPPED;
 }
 
+bool Elevator::isAtSafeFloor() const { return currentFloorNum == safeFloor; }
+
 void Elevator::determineMovement() {
-    // Collect floors with their up/down floor buttons pressed or targeted by
-    // this elevator's destination button panel.
-    QVector<int> queuedFloors = parentBuilding->getQueuedFloors();
-    queuedFloors.append(queuedDestinations());
+    checkEmergency();  // Update emergency state
 
-    // No eligible floors queued
-    if (queuedFloors.isEmpty()) {
-        setMovement(MovementState::STOPPED);
-        return;
+    int targetFloor;
+
+    if (emergencyState == EmergencyState::OVERLOAD) {
+        // Cannot leave until overload is resolved
+        targetFloor = currentFloorNum;
+    } else if (emergencyState == EmergencyState::FIRE ||
+               emergencyState == EmergencyState::POWER_OUT) {
+        // Seek a safe floor, disregard queues.
+        targetFloor = safeFloor;
+    } else {
+        // Collect floors with their up/down floor buttons pressed or targeted
+        // by this elevator's destination button panel.
+        QVector<int> queuedFloors = parentBuilding->getQueuedFloors();
+        queuedFloors.append(queuedDestinations());
+
+        // No eligible floors queued
+        if (queuedFloors.isEmpty()) {
+            setMovement(MovementState::STOPPED);
+            return;
+        }
+
+        // Sort floors
+        std::sort(queuedFloors.begin(), queuedFloors.end());
+
+        // Remove duplicate floors
+        queuedFloors.erase(
+            std::unique(queuedFloors.begin(), queuedFloors.end()),
+            queuedFloors.end());
+
+        // Compute optimal floor to move to
+        targetFloor = closestQueuedFloor(queuedFloors);
     }
-
-    // Sort floors
-    std::sort(queuedFloors.begin(), queuedFloors.end());
-
-    // Remove duplicate floors
-    queuedFloors.erase(std::unique(queuedFloors.begin(), queuedFloors.end()),
-                       queuedFloors.end());
-
-    // Compute optimal floor to move to
-    int targetFloor = closestQueuedFloor(queuedFloors);
 
     if (currentFloorNum == targetFloor) {
         // Elevator stopped on current floor.
@@ -220,8 +273,13 @@ void Elevator::openDoors() {
 }
 
 void Elevator::closeDoors() {
-    // Doors would already be closed if elevator is moving
-    if (isMoving()) return;
+    // Doors would already be closed if elevator is moving; doors should stay
+    // open in applicable emergency states
+    if (((emergencyState == EmergencyState::FIRE ||
+          emergencyState == EmergencyState::POWER_OUT) &&
+         isAtSafeFloor()) ||
+        emergencyState == EmergencyState::OVERLOAD || isMoving())
+        return;
 
     switch (doorState) {
         case DoorState::OPEN:
@@ -259,6 +317,12 @@ void Elevator::setMovement(Elevator::MovementState newMovement) {
 void Elevator::setDoorState(Elevator::DoorState newDoorState) {
     if (doorState != newDoorState) {
         doorState = newDoorState;
+
+        if (doorState == DoorState::CLOSED)
+            obstacleButton->setDisabled(true);
+        else
+            obstacleButton->setDisabled(false);
+
         emit elevatorDataChanged();
     }
 }
@@ -318,6 +382,13 @@ QVector<QWidget *> Elevator::getDoorButtonWidgets() {
                               qobject_cast<QWidget *>(closeButton)};
 }
 
+QVector<QWidget *> Elevator::getEmergencyButtonWidgets() {
+    return QVector<QWidget *>{qobject_cast<QWidget *>(overloadButton),
+                              qobject_cast<QWidget *>(obstacleButton),
+                              qobject_cast<QWidget *>(fireButton),
+                              qobject_cast<QWidget *>(helpButton)};
+}
+
 QVector<QWidget *> Elevator::getDestButtonWidgets() {
     QVector<QWidget *> toReturn;
 
@@ -334,19 +405,20 @@ const QString Elevator::getTextDisplay() const {
         case EmergencyState::HELP:
             return "HELP: (connecting to building safety service or 911...)";
         case EmergencyState::FIRE:
-            if (currentMovement == MovementState::STOPPED)
+            if ((currentMovement == MovementState::STOPPED) && isAtSafeFloor())
                 return "FIRE: Safe floor reached. Please disembark.";
             else
                 return "FIRE: Moving to safe floor.";
         case EmergencyState::POWER_OUT:
-            if (currentMovement == MovementState::STOPPED)
+            if ((currentMovement == MovementState::STOPPED) && isAtSafeFloor())
                 return "POWER OUTAGE: Safe floor reached. Please disembark.";
             else
                 return "POWER OUTAGE: Running on emergency power. Moving to "
                        "safe floor.";
         case EmergencyState::OVERLOAD:
             return "OVERLOAD: Please reduce the load.";
-        case EmergencyState::DOOR_STUCK:  // TODO
+        case EmergencyState::DOOR_STUCK:
+            return "DOOR OBSTACLE: Please clear the doorway.";
         case EmergencyState::NONE:
         default:
             break;
@@ -366,34 +438,54 @@ const QString Elevator::getTextDisplay() const {
     return "";
 }
 
-void Elevator::setEmergency(EmergencyState state) {
-    if (emergencyState != state) {
-        emergencyState = state;
-        emit elevatorDataChanged();
+void Elevator::checkEmergency() {
+    // Earlier cases take priority when multiple are active.
+    EmergencyState newState;
 
+    if (overloadButton->isChecked())
+        newState = EmergencyState::OVERLOAD;
+    else if (parentBuilding->buildingPowerOut())
+        newState = EmergencyState::POWER_OUT;
+    else if (fireButton->isChecked() || parentBuilding->buildingOnFire())
+        newState = EmergencyState::FIRE;
+    else if (doorCloseFailures >= doorCloseFailThreshold)
+        newState = EmergencyState::DOOR_STUCK;
+    else if (helpButton->isChecked())
+        newState = EmergencyState::HELP;
+    else
+        newState = EmergencyState::NONE;
+
+    if (emergencyState != newState) {
+        emergencyState = newState;
         // Audio warnings (using inline console instead of actual audio output)
         switch (emergencyState) {
             case EmergencyState::FIRE:
-                if (currentMovement == MovementState::STOPPED)
-                    emit textOut("Safe floor reached. Please disembark.");
-                else
-                    emit textOut(
-                        "A fire has been detected. Moving towards safe floor.");
+                emit textOut(
+                    "A fire has been detected. Moving towards safe floor.");
+                break;
             case EmergencyState::POWER_OUT:
-                if (currentMovement == MovementState::STOPPED)
-                    emit textOut("Safe floor reached. Please disembark.");
-                else
-                    emit textOut(
-                        "A power outage has been detected. Moving towards safe "
-                        "floor.");
+                emit textOut(
+                    "A power outage has been detected. Moving towards safe "
+                    "floor.");
+                break;
             case EmergencyState::OVERLOAD:
                 emit textOut("Overload. Please reduce the load.");
+                break;
+            case EmergencyState::DOOR_STUCK:
+                emit textOut(
+                    "Door obstacle detected. Please clear the doorway.");
+                break;
             case EmergencyState::HELP:
                 emit textOut("(connected to building safety service or 911)");
-            case EmergencyState::DOOR_STUCK:  // TODO
+                break;
             case EmergencyState::NONE:
             default:
                 break;
         }
+        emit elevatorDataChanged();
     }
+}
+
+bool Elevator::doorSensorSeesObstacle() const {
+    return obstacleButton->isChecked();
 }

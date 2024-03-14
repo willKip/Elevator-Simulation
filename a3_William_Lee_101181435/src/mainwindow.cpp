@@ -20,7 +20,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     // Initialize building data model.
-    buildingModel = new Building(FLOOR_COUNT, ELEVATOR_COUNT, 3, 1);
+    buildingModel = new Building(FLOOR_COUNT, ELEVATOR_COUNT, 4, 1);
 
     /**
      * Initialize building view in UI.
@@ -42,6 +42,21 @@ MainWindow::MainWindow(QWidget *parent)
 
         addIndexWidgets(f, buildingModel->elevatorCount, fd->getButtonWidgets(),
                         false);
+    }
+
+    /**
+     * Add building-wide emergency simulation buttons.
+     */
+    QHBoxLayout *buildingButtonLayout = ui->buildingButtonLayout;
+    buildingButtonLayout->setSpacing(0);
+    buildingButtonLayout->setContentsMargins(0, 0, 0, 0);
+
+    QVector<QWidget *> buildingEmergencyButtons =
+        buildingModel->getEmergencyButtons();
+
+    QVectorIterator<QWidget *> i(buildingEmergencyButtons);
+    while (i.hasNext()) {
+        buildingButtonLayout->addWidget(i.next());
     }
 
     /**
@@ -108,6 +123,8 @@ MainWindow::MainWindow(QWidget *parent)
         addIndexWidgets(addRowIndex++, e, el->getDestButtonWidgets(), false);
 
         /* Fourth row: Simulate emergencies */
+        addIndexWidgets(addRowIndex++, e, el->getEmergencyButtonWidgets(),
+                        false);
     }
 }
 
@@ -127,7 +144,9 @@ void MainWindow::addIndexWidgets(int rowIndex, int colIndex,
     newLayout->setContentsMargins(0, 0, 0, 0);
 
     QVectorIterator<QWidget *> i(widgetsToAdd);
-    while (i.hasNext()) newLayout->addWidget(i.next());
+    while (i.hasNext()) {
+        newLayout->addWidget(i.next());
+    }
 
     ui->buildingView->setIndexWidget(buildingModel->index(rowIndex, colIndex),
                                      newContainer);

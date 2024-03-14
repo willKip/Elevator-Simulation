@@ -47,11 +47,17 @@ class Elevator : public QObject {
     /**
      * Public methods
      */
-    // Return a string representing the elevator's status.
-    const QString getElevatorString() const;
-
     // Return true if the elevator is currently moving.
     bool isMoving() const;
+
+    // Return true if the elevator is at a safe floor.
+    bool isAtSafeFloor() const;
+
+    // Return current door state.
+    Elevator::DoorState getDoorState() const;
+
+    // Return a string representing the elevator's status.
+    const QString getElevatorString() const;
 
     /* Return appropriate text for the current elevator state. */
     const QString getTextDisplay() const;
@@ -59,6 +65,7 @@ class Elevator : public QObject {
     // Return QWidget pointers to elevator's buttons for adding to UI
     QVector<QWidget *> getDoorButtonWidgets();
     QVector<QWidget *> getDestButtonWidgets();
+    QVector<QWidget *> getEmergencyButtonWidgets();
 
    signals:
     // Fired when an aspect of the elevator has changed.
@@ -90,6 +97,12 @@ class Elevator : public QObject {
     DataButton *const openButton;
     DataButton *const closeButton;
 
+    // Buttons to simulate emergency states
+    DataButton *const fireButton;
+    DataButton *const obstacleButton;
+    DataButton *const helpButton;
+    DataButton *const overloadButton;
+
     // Destination buttons; mapping floor numbers to their button pointers.
     QMap<int, DestButton *> destinationButtons;
 
@@ -108,13 +121,32 @@ class Elevator : public QObject {
     // How long it takes before an open elevator will close itself
     static const int doorWaitMs = 2000;
 
+    // Counts number of failed door closes that occur (in the simulation, while
+    // DOOR_STUCK state is active). If over threshold, elevator will notify
+    // passengers.
+    int doorCloseFailures;
+
+    // Max number of failed door closes. If reached, alert passengers.
+    static const int doorCloseFailThreshold = 3;
+
+    // Safe floor hardcoded as the lowest floor, floor 1 in the simulation to
+    // make apparent how the elevator ignores all other floor requests when
+    // headed to a safe floor in an emergency.
+    static const int safeFloor = 1;
+
     /**
      * Private methods
      */
     /* Private setters that emit signals or trigger responses on data change */
     void setMovement(MovementState);
     void setDoorState(DoorState);
-    void setEmergency(EmergencyState);
+
+    // Retrieve elevator's emergency state from buttons.
+    // Building-wide emergency states are applied separately.
+    void checkEmergency();
+
+    // Check whether the door sensor senses an obstacle.
+    bool doorSensorSeesObstacle() const;
 
     // Ring the bell of the elevator.
     void ring();

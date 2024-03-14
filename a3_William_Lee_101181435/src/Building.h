@@ -11,6 +11,7 @@
 // Forward declarations
 class Elevator;
 class Floor;
+class DataButton;
 
 /**
  * Class simulating a building with elevators.
@@ -67,6 +68,13 @@ class Building : public QAbstractTableModel {
     // Update a specific column (elevator) in the view.
     void updateColumn(int col);
 
+    // Check building-wide emergency states.
+    bool buildingOnFire() const;
+    bool buildingPowerOut() const;
+
+    // Return building emergency button widgets.
+    QVector<QWidget *> getEmergencyButtons();
+
    signals:
     // Fired when there is a change to building data (e.g. floor button pressed,
     // elevator at new floor)
@@ -95,5 +103,9 @@ class Building : public QAbstractTableModel {
     // Maps of building object table indices to floor numbers and elevator IDs.
     QHash<int, int> index_floorNum_Map;
     QHash<int, int> index_carId_Map;
+
+    // Building-wide emergency simulation buttons
+    DataButton *const buildingFireButton;
+    DataButton *const buildingPowerOutButton;
 };
 #endif /* BUILDING_H */
