@@ -6,13 +6,13 @@
 #include <QWidget>
 
 DataButton::DataButton(bool doDataToggle, bool doPressHold, bool c,
-                       QString objectName, QWidget *parent)
+                       QString label, QWidget *parent)
     : QPushButton(parent),
       doDataToggle(doDataToggle),
       doPressHold(doPressHold),
       checked(c) {
-    // Set Qt button object name
-    if (!objectName.isEmpty()) setObjectName(objectName);
+    // Set text label if one is given
+    if (!label.isEmpty()) setText(label);
 
     // Set size to fill parent widget
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);

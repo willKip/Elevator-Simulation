@@ -17,12 +17,9 @@ Building::Building(int f, int e, int ar, int ac, QObject *parent)
       elevatorCount(e),
       rowButtonCount(ar),
       colButtonCount(ac),
-      buildingFireButton(new DataButton(true, false, false)),
-      buildingPowerOutButton(new DataButton(true, false, false)) {
-    /* Initialize building emergency buttons */
-    buildingFireButton->setText("Building\nFIRE");
-    buildingPowerOutButton->setText("Building\nPOWER OUT");
-
+      buildingFireButton(new DataButton(true, false, false, "Building\nFIRE")),
+      buildingPowerOutButton(
+          new DataButton(true, false, false, "Building\nPOWER OUT")) {
     /* Initialize floors */
     for (int f_ind = 0; f_ind < floorCount; ++f_ind) {
         int floorNum = index_to_floorNum(f_ind);

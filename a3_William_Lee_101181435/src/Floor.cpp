@@ -1,20 +1,19 @@
 #include "Floor.h"
 
+#include <QObject>
 #include <QVector>
 #include <QWidget>
 
 #include "Building.h"
+#include "DataButton.h"
 
 // TODO: cleanup
 Floor::Floor(int i, int fn, Building *parentBuilding, QObject *parent)
     : QObject(parent),
       index(i),
       floorNumber(fn),
-      upButton(new FloorButton(floorNumber, Direction::UP, false,
-                               QString("floor%1UpButton").arg(floorNumber))),
-      downButton(
-          new FloorButton(floorNumber, Direction::DOWN, false,
-                          QString("floor%1DownButton").arg(floorNumber))),
+      upButton(new DataButton(true, true, false, "UP ▲")),
+      downButton(new DataButton(true, true, false, "DOWN ▼")),
       parentBuilding(parentBuilding) {
     // Disable buttons appropriately at the very top or bottom floor.
     if (index == 0)
@@ -22,9 +21,9 @@ Floor::Floor(int i, int fn, Building *parentBuilding, QObject *parent)
     else if (index == (parentBuilding->floorCount - 1))
         downButton->setDisabled(true);  // Bottom floor
 
-    connect(upButton, &FloorButton::buttonCheckedUpdate, this,
+    connect(upButton, &DataButton::buttonCheckedUpdate, this,
             &Floor::floorStateChanged);
-    connect(downButton, &FloorButton::buttonCheckedUpdate, this,
+    connect(downButton, &DataButton::buttonCheckedUpdate, this,
             &Floor::floorStateChanged);
 };
 

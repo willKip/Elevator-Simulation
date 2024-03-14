@@ -9,7 +9,6 @@
 #include <QWidget>
 
 #include "DataButton.h"
-#include "DestButton.h"
 
 class Building;
 
@@ -106,7 +105,7 @@ class Elevator : public QObject {
     DataButton *const overloadButton;
 
     // Destination buttons; mapping floor numbers to their button pointers.
-    QMap<int, DestButton *> destinationButtons;
+    QMap<int, DataButton *> destinationButtons;
 
     MovementState currentMovement;
     DoorState doorState;

@@ -10,7 +10,6 @@
 
 #include "Building.h"
 #include "DataButton.h"
-#include "DestButton.h"
 
 // TODO: cleanup
 Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
@@ -20,12 +19,12 @@ Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
       carId(carId),
       currentFloorNum(initialFloorNum),
       parentBuilding(parentBuilding),
-      openButton(new DataButton(false, true)),
-      closeButton(new DataButton(false, true)),
-      fireButton(new DataButton(true, false)),
-      obstacleButton(new DataButton(true, false)),
-      helpButton(new DataButton(true, false)),
-      overloadButton(new DataButton(true, false)),
+      openButton(new DataButton(false, true, false, "Open ❰|❱")),
+      closeButton(new DataButton(false, true, false, "Close ❱|❰")),
+      fireButton(new DataButton(true, false, false, "FIRE")),
+      obstacleButton(new DataButton(true, false, false, "DOOR\n\nOBST\nACLE")),
+      helpButton(new DataButton(true, false, false, "HELP")),
+      overloadButton(new DataButton(true, false, false, "OVER\nLOAD")),
       currentMovement(MovementState::STOPPED),
       doorState(DoorState::CLOSED),
       emergencyState(EmergencyState::NONE),
@@ -33,23 +32,13 @@ Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
       doorSpeedTimer(new QTimer(this)),
       doorWaitTimer(new QTimer(this)),
       doorCloseFailures(0) {
-    /* Set up door buttons */
-    openButton->setText("Open ❰|❱");
-    closeButton->setText("Close ❱|❰");
-
     // Connect door override buttons
     connect(openButton, &DataButton::buttonCheckedUpdate, this,
             &Elevator::openDoors);
     connect(closeButton, &DataButton::buttonCheckedUpdate, this,
             &Elevator::closeDoors);
 
-    /* Set up emergency simulation buttons */
-    fireButton->setText("FIRE");
-    obstacleButton->setText("DOOR\n\nOBST\nACLE");
-    helpButton->setText("HELP");
-    overloadButton->setText("OVER\nLOAD");
-
-    // Obstacle button is not relevant when door is closed.
+    // Obstacle button cannot be used when door is already closed.
     obstacleButton->setDisabled(doorState == DoorState::CLOSED ? true : false);
 
     connect(fireButton, &DataButton::buttonCheckedUpdate, this,
@@ -63,11 +52,13 @@ Elevator::Elevator(int buildingColIndex, int carId, int initialFloorNum,
 
     for (int f_ind = 0; f_ind < parentBuilding->floorCount; ++f_ind) {
         int floorNum = parentBuilding->index_to_floorNum(f_ind);
-        DestButton *destButton = new DestButton(floorNum);
+
+        DataButton *destButton =
+            new DataButton(true, false, false, QString("%1").arg(floorNum));
 
         destinationButtons.insert(floorNum, destButton);
 
-        connect(destButton, &DestButton::buttonCheckedUpdate, this,
+        connect(destButton, &DataButton::buttonCheckedUpdate, this,
                 &Elevator::determineMovement);
     }
 

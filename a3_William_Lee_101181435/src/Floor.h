@@ -5,7 +5,7 @@
 #include <QVector>
 #include <QWidget>
 
-#include "FloorButton.h"
+#include "DataButton.h"
 
 class Building;
 
@@ -37,8 +37,8 @@ class Floor : public QObject {
     Building *const parentBuilding;  // Pointer to Building Floor belongs to
 
     // Directional buttons of the floor
-    FloorButton *const upButton;
-    FloorButton *const downButton;
+    DataButton *const upButton;
+    DataButton *const downButton;
 };
 
 #endif /* FLOOR_H */

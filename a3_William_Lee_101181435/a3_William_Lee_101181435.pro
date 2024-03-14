@@ -17,17 +17,13 @@ SOURCES += \
     $${source_dir}/Building.cpp \
     $${source_dir}/Elevator.cpp \
     $${source_dir}/DataButton.cpp \
-    $${source_dir}/DestButton.cpp \
-    $${source_dir}/Floor.cpp \
-    $${source_dir}/FloorButton.cpp
+    $${source_dir}/Floor.cpp
 
 HEADERS += \
     $${source_dir}/mainwindow.h \
     $${source_dir}/Building.h \
     $${source_dir}/Elevator.h \
     $${source_dir}/DataButton.h \
-    $${source_dir}/DestButton.h \
-    $${source_dir}/FloorButton.h \
     $${source_dir}/Floor.h \
     $${source_dir}/Direction.h
 
