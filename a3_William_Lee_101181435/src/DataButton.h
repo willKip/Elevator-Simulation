@@ -45,8 +45,7 @@ class DataButton : public QPushButton {
 
    public:
     explicit DataButton(bool doDataToggle = true, bool doPressHold = true,
-                        bool initialChecked = false, QString label = "",
-                        QWidget *parent = nullptr);
+                        bool initialChecked = false, QString label = "");
 
     /* Public methods */
     bool isChecked() const;

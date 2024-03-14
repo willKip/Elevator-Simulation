@@ -6,8 +6,8 @@
 #include <QWidget>
 
 DataButton::DataButton(bool doDataToggle, bool doPressHold, bool c,
-                       QString label, QWidget *parent)
-    : QPushButton(parent),
+                       QString label)
+    : QPushButton(nullptr),  // Parent will be set when button added in UI
       doDataToggle(doDataToggle),
       doPressHold(doPressHold),
       checked(c) {

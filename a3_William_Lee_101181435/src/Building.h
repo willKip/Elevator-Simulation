@@ -39,6 +39,9 @@ struct floorData;
  * - buildingPowerOutButton: DataButton *
  *      Buttons for toggling simulated building-wide emergencies.
  *
+ * - floorButtonUiWidth: int
+ *      Defines the maximum width of the floor buttons in the UI.
+ *
  * Class Methods:
  * + index_to_floorNum(int): int
  * + index_to_carId(int): int
@@ -149,6 +152,8 @@ class Building : public QAbstractTableModel {
 
     DataButton *const buildingFireButton;
     DataButton *const buildingPowerOutButton;
+
+    static const int floorButtonUiWidth = 70;
 
     /* Private methods */
     const Elevator *getElevator_byIndex(int) const;

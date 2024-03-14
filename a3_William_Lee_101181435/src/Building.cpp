@@ -26,6 +26,9 @@ Building::Building(int f, int e, int ar, int ac, QObject *parent)
         DataButton *upButton = new DataButton(true, true, false, "UP ▲");
         DataButton *downButton = new DataButton(true, true, false, "DOWN ▼");
 
+        upButton->setMaximumWidth(floorButtonUiWidth);
+        downButton->setMaximumWidth(floorButtonUiWidth);
+
         // Disable buttons appropriately at the very top or bottom floor.
         if (f_ind == 0)
             upButton->setDisabled(true);  // Top floor
@@ -48,18 +51,15 @@ Building::Building(int f, int e, int ar, int ac, QObject *parent)
         int initFloorNum = index_to_floorNum(
             QRandomGenerator::global()->bounded(0, floorCount));
 
-        int carId = index_to_carId(e_ind);
+        Elevator *newElevator = new Elevator(initFloorNum, this, this);
 
-        Elevator *newElevator =
-            new Elevator(e_ind, carId, initFloorNum, this, this);
-
-        carId_Elevator_Map.insert(carId, newElevator);
+        carId_Elevator_Map.insert(index_to_carId(e_ind), newElevator);
 
         // Catch changes in elevator to update building data
         connect(newElevator, &Elevator::elevatorDataChanged, this,
-                [newElevator, this]() {
+                [e_ind, newElevator, this]() {
                     emit buildingDataChanged();
-                    this->updateColumn(newElevator->buildingColIndex);
+                    this->updateColumn(e_ind);
                 });
 
         connect(newElevator, &Elevator::elevatorArrived, this,
@@ -76,10 +76,6 @@ Building::Building(int f, int e, int ar, int ac, QObject *parent)
                 &Building::buildingDataChanged);
         connect(buildingPowerOutButton, &DataButton::buttonCheckedUpdate, this,
                 &Building::buildingDataChanged);
-
-        // Inform elevators to compute new movement when building data changes
-        connect(this, &Building::buildingDataChanged, newElevator,
-                &Elevator::determineMovement);
     }
 }
 
@@ -139,17 +135,7 @@ QVariant Building::data(const QModelIndex &index, int role) const {
                 case Qt::BackgroundRole:
                     // Background brush
                     // Color the cell of current elevator location
-                    switch (elevator->getDoorState()) {
-                        case Elevator::DoorState::OPENING:
-                            return QBrush(Qt::darkGreen);
-                        case Elevator::DoorState::OPEN:
-                            return QBrush(Qt::green);
-                        case Elevator::DoorState::CLOSING:
-                            return QBrush(Qt::darkCyan);
-                        case Elevator::DoorState::CLOSED:
-                        default:
-                            return QBrush(Qt::cyan);
-                    }
+                    return elevator->getElevatorColor();
                 case Qt::TextAlignmentRole:
                     /* Align text within cell.
                       Int conversion is a hack to achieve the horizontal center
@@ -233,8 +219,8 @@ const Elevator *Building::getElevator_byIndex(int index) const {
 }
 
 QVector<QWidget *> Building::getEmergencyButtons() {
-    return QVector<QWidget *>{qobject_cast<QWidget *>(buildingFireButton),
-                              qobject_cast<QWidget *>(buildingPowerOutButton)};
+    return QVector<QWidget *>{qobject_cast<QWidget *>(buildingPowerOutButton),
+                              qobject_cast<QWidget *>(buildingFireButton)};
 }
 
 QVector<QWidget *> Building::getFloorButtons_byIndex(int index) {
