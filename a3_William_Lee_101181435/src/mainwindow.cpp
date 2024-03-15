@@ -1,7 +1,6 @@
 #include "mainwindow.h"
 
 #include <QBoxLayout>
-#include <QDebug>
 #include <QLCDNumber>
 #include <QLabel>
 #include <QScrollBar>
