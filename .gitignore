@@ -76,3 +76,5 @@ Thumbs.db
 
 # Drawio Backup files
 *.bkp
+
+ignored/
